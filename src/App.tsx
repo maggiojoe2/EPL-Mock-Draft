@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useRef } from 'react'
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { draftEngine } from './engine/draftEngine'
 import SetupScreen from './setup/SetupScreen'
 import type { DraftState, PickRecord, Player } from './types'
@@ -11,10 +11,7 @@ const TOTAL_ROUNDS = 16
 // ── App (router) ───────────────────────────────────────────────────────────
 
 export default function App() {
-  const [draftState, setDraftState] = useReducer(
-    (_: DraftState | null, s: DraftState) => s,
-    null,
-  )
+  const [draftState, setDraftState] = useState<DraftState | null>(null)
 
   if (!draftState) {
     return <SetupScreen onDraftStart={setDraftState} />
@@ -128,7 +125,12 @@ function DraftView({ initialState }: { initialState: DraftState }) {
 
 // ── buildCellTypeMap ───────────────────────────────────────────────────────
 
-/** Return a map of `"teamIndex-round"` → pickType for all filled cells. */
+/** Encode a board cell as a map key. One place to change if the schema changes. */
+function cellKey(teamIndex: number, round: number): string {
+  return `${teamIndex}-${round}`
+}
+
+/** Return a map of `cellKey(ti, round)` → pickType for all filled cells. */
 function buildCellTypeMap(
   teams: DraftState['teams'],
   pickHistory: PickRecord[],
@@ -137,20 +139,32 @@ function buildCellTypeMap(
 
   // Normal / save / pullback picks are in history.
   for (const record of pickHistory) {
-    map.set(`${record.teamIndex}-${record.round}`, record.pickType)
+    map.set(cellKey(record.teamIndex, record.round), record.pickType)
   }
 
   // Franchise pre-fills are placed by initDraft (not through PICK_PLAYER) so
   // they have no history entry — detect them from the team's franchisePlayer.
+  // Note: if a future change records franchise placement in pickHistory, the
+  // `!map.has` guard prevents this fallback from overwriting that entry.
+  const franchiseRound = TOTAL_ROUNDS
   for (let ti = 0; ti < teams.length; ti++) {
     const team = teams[ti]!
-    if (team.franchisePlayer && team.roster[16]?.id === team.franchisePlayer.id) {
-      const key = `${ti}-16`
+    if (team.franchisePlayer && team.roster[franchiseRound]?.id === team.franchisePlayer.id) {
+      const key = cellKey(ti, franchiseRound)
       if (!map.has(key)) map.set(key, 'franchise')
     }
   }
 
   return map
+}
+
+// ── Cell-type config ───────────────────────────────────────────────────────
+
+/** One place to add a new pick type: css modifier + badge markup. */
+const CELL_TYPE_CONFIG: Partial<Record<PickRecord['pickType'], { mod: string; badge: React.ReactNode }>> = {
+  franchise: { mod: 'pick-cell--franchise', badge: <span className="chip-badge chip-badge--fp">★ FP</span> },
+  save:      { mod: 'pick-cell--save',      badge: <span className="chip-badge chip-badge--save">💾</span> },
+  pullback:  { mod: 'pick-cell--pullback',  badge: <span className="chip-badge chip-badge--pb">↩</span> },
 }
 
 // ── DraftBoard ─────────────────────────────────────────────────────────────
@@ -205,13 +219,14 @@ function DraftBoard({
                 {teams.map((team, ti) => {
                   const player = team.roster[round]
                   const isActive = isActiveRound && currentPick.teamIndex === ti
-                  const cellType = cellTypeMap.get(`${ti}-${round}`)
+                  const cellType = cellTypeMap.get(cellKey(ti, round))
+                  const typeConfig = cellType ? CELL_TYPE_CONFIG[cellType] : undefined
 
-                  let cellClass = 'pick-cell'
-                  if (isActive) cellClass += ' active-cell'
-                  if (cellType === 'franchise') cellClass += ' pick-cell--franchise'
-                  else if (cellType === 'save') cellClass += ' pick-cell--save'
-                  else if (cellType === 'pullback') cellClass += ' pick-cell--pullback'
+                  const cellClass = [
+                    'pick-cell',
+                    isActive ? 'active-cell' : '',
+                    typeConfig?.mod ?? '',
+                  ].filter(Boolean).join(' ')
 
                   return (
                     <td key={ti} className={cellClass}>
@@ -219,9 +234,7 @@ function DraftBoard({
                         <span className="player-chip">
                           <span className="pos">{player.position}</span>
                           {player.name}
-                          {cellType === 'franchise' && <span className="chip-badge chip-badge--fp">★ FP</span>}
-                          {cellType === 'save' && <span className="chip-badge chip-badge--save">💾</span>}
-                          {cellType === 'pullback' && <span className="chip-badge chip-badge--pb">↩</span>}
+                          {typeConfig?.badge}
                         </span>
                       ) : isActive ? (
                         <span className="on-clock">on the clock</span>
