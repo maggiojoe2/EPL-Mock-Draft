@@ -13,11 +13,12 @@ export function initDraft(params: {
   // Sort ascending by ADP so the best available players appear at the top.
   let pool = [...availablePool].sort((a, b) => a.adp - b.adp)
   const teams = params.teams.map(team => {
-    if (!team.franchisePlayer) return team
+    const lastAvailableRound = team.franchisePlayer ? 15 : 16
+    if (!team.franchisePlayer) return { ...team, lastAvailableRound }
     pool = pool.filter(p => p.id !== team.franchisePlayer!.id)
     const roster = [...team.roster]
     roster[16] = team.franchisePlayer
-    return { ...team, roster }
+    return { ...team, roster, lastAvailableRound }
   })
 
   return {

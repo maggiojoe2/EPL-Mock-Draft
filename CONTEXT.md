@@ -22,7 +22,7 @@
 
 **Franchise eligibility** — the property of a player having been on the same fantasy team's roster at the end of 2 consecutive seasons. Tracked per team via the franchise_eligible flag in the roster import.
 
-**Save** — a one-per-draft action. When an opponent picks a player from your previous-year roster who has never been saved by your team before, you may block that pick and keep the player. The saved player fills your furthest-back open round (starting at round 15, then 14, 13, etc., since round 16 is reserved for the franchise player).
+**Save** — a one-per-draft action. When an opponent picks a player from your previous-year roster who has never been saved by your team before, you may block that pick and keep the player. The saved player fills your furthest-back open round (starting at round 16 or 15 if a franchise player was declared, then 14, 13, etc.).
 
 **Saveable player** — a player on your previous-year roster who has never been saved by your team in any prior draft.
 
@@ -30,7 +30,7 @@
 
 **Pullback** — an unlimited reaction (one per eligible player picked). When an opponent picks any player from your previous-year roster, you may claim a *different* player from your previous-year roster instead. The original pick stands; the pulled-back player fills your furthest-back open round. A team may decline to pull back.
 
-**Last available round** — the furthest-back unfilled round slot for a team. Saves and pullbacks always fill this slot, pushing it forward (15→14→13…). Round 16 is never available this way — it is always reserved for the franchise player.
+**Last available round** — the furthest-back unfilled round slot for a team. Saves and pullbacks always fill this slot, pushing it forward. Teams with a franchise player start at round 15 (since round 16 is pre-filled); teams without one start at round 16.
 
 **ADP (Average Draft Position)** — a ranking of NFL players by the average position at which they are drafted across many leagues. Used to drive AI pick decisions, sourced from a FantasyPros CSV export.
 

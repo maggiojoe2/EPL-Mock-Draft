@@ -312,7 +312,7 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
               <h2>3 · Franchise Player</h2>
               {userEligiblePlayers.length === 0 ? (
                 <p className="muted">
-                  {userTeam!.name} has no franchise-eligible players — round 16 will be empty.
+                  {userTeam!.name} has no franchise-eligible players — saves and pullbacks will fill from round 16.
                 </p>
               ) : (
                 <div className="team-select-row">

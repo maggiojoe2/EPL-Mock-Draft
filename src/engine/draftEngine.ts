@@ -40,6 +40,14 @@ function totalPicksFilled(teams: Team[]): number {
   }, 0)
 }
 
+/** Return true when the team has at least one unfilled slot >= fromRound. */
+function teamHasOpenNormalSlot(team: Team, fromRound: number): boolean {
+  for (let r = fromRound; r <= TOTAL_ROUNDS; r++) {
+    if (team.roster[r] === null) return true
+  }
+  return false
+}
+
 /** Return the first unfilled roster slot >= fromRound for the given team.
  *  Saves and pullbacks fill from the back; a normal pick must skip any such
  *  pre-filled slots so it never overwrites them. */
@@ -349,6 +357,15 @@ export function draftEngine(state: DraftState, action: Action): DraftState {
       const { teamIndex } = state.currentPick
       // Don't advance past the user's turn in practice mode.
       if (state.mode === 'practice' && teamIndex === state.userTeamIndex) return state
+
+      // Skip teams with no open normal slots (their roster is already complete via
+      // franchise/save/pullback; a normal pick would throw or overwrite).
+      const currentTeam = state.teams[teamIndex]!
+      if (!teamHasOpenNormalSlot(currentTeam, state.currentPick.round)) {
+        const next = nextPick(state.currentPick.round, teamIndex, state.teams.length)
+        if (!next) return { ...state, isDraftComplete: totalPicksFilled(state.teams) === state.teams.length * TOTAL_ROUNDS }
+        return draftEngine({ ...state, currentPick: next }, { type: 'ADVANCE_SIMULATION' })
+      }
 
       const player = aiPickPlayer(state.availablePool)
       if (!player) return state

@@ -263,3 +263,90 @@ describe('initDraft ADP sort', () => {
     expect(adps).toEqual([...adps].sort((a, b) => a - b))
   })
 })
+
+// ── initDraft: lastAvailableRound for no-franchise teams ──────────────────────
+
+describe('initDraft lastAvailableRound', () => {
+  it('no-franchise team gets lastAvailableRound 16 (not the pre-init default of 15)', async () => {
+    const { initDraft } = await import('../initDraft')
+    const players = Array.from({ length: 10 }, (_, i) => makePlayer(i))
+    // Team with franchisePlayer: null and default pre-init lastAvailableRound: 15
+    const team = makeTeam({ name: 'No Franchise', franchisePlayer: null, lastAvailableRound: 15 })
+    const state = initDraft({ mode: 'watch', userTeamIndex: null, teams: [team], availablePool: players })
+    expect(state.teams[0]!.lastAvailableRound).toBe(16)
+  })
+
+  it('franchise team retains lastAvailableRound 15 after initDraft', async () => {
+    const { initDraft } = await import('../initDraft')
+    const franchisePlayer = makePlayer(0)
+    const players = Array.from({ length: 10 }, (_, i) => makePlayer(i))
+    const team = makeTeam({ name: 'Has Franchise', franchisePlayer, lastAvailableRound: 15 })
+    const state = initDraft({ mode: 'watch', userTeamIndex: null, teams: [team], availablePool: players })
+    expect(state.teams[0]!.lastAvailableRound).toBe(15)
+  })
+})
+
+// ── ADVANCE_SIMULATION: skip full teams ───────────────────────────────────────
+
+describe('ADVANCE_SIMULATION full-team skip', () => {
+  it('skips a team whose roster is entirely filled — no pick is made, pool is unchanged', () => {
+    // Single-team draft at round 16 with all 16 slots already filled (franchise in slot 16,
+    // slots 1–15 filled by normal picks). After the skip, nextPick returns null so the engine
+    // cannot recurse into another team — the pool must stay pristine.
+    const franchisePlayer = makePlayer(200)
+    const fullRoster: (Player | null)[] = Array.from({ length: 17 }, () => null)
+    for (let r = 1; r <= 15; r++) {
+      fullRoster[r] = makePlayer(r)
+    }
+    fullRoster[16] = franchisePlayer
+
+    const fullTeam = makeTeam({ name: 'Full Team', roster: fullRoster, lastAvailableRound: 15 })
+    const pool = Array.from({ length: 50 }, (_, i) => makePlayer(i + 100))
+
+    // Single-team draft at round 16, teamIndex 0
+    const state = makeDraftState({
+      mode: 'watch',
+      userTeamIndex: null,
+      teams: [fullTeam],
+      availablePool: pool,
+      currentPick: { round: 16, teamIndex: 0 },
+    })
+
+    const next = draftEngine(state, { type: 'ADVANCE_SIMULATION' })
+    // No pick was made — pool must be unchanged
+    expect(next.availablePool.length).toBe(pool.length)
+    // The full team's roster is still intact
+    const filledSlotsAfter = next.teams[0]!.roster.slice(1).filter(s => s !== null).length
+    expect(filledSlotsAfter).toBe(16)
+  })
+
+  it('draft completes when the last open slot on a no-franchise team is filled', () => {
+    // One no-franchise team with slots 1–15 filled and slot 16 null
+    const almostFullRoster: (ReturnType<typeof makePlayer> | null)[] = Array.from({ length: 17 }, () => null)
+    for (let r = 1; r <= 15; r++) {
+      almostFullRoster[r] = makePlayer(r)
+    }
+    // slot 16 is still null
+
+    const noFranchiseTeam = makeTeam({
+      name: 'No Franchise',
+      roster: almostFullRoster,
+      franchisePlayer: null,
+      lastAvailableRound: 16,
+    })
+    const teams = [noFranchiseTeam]
+    const finalPlayer = makePlayer(99)
+    const pool = [finalPlayer]
+
+    const state = makeDraftState({
+      mode: 'watch',
+      userTeamIndex: null,
+      teams,
+      availablePool: pool,
+      currentPick: { round: 16, teamIndex: 0 },
+    })
+
+    const next = draftEngine(state, { type: 'PICK_PLAYER', player: finalPlayer })
+    expect(next.isDraftComplete).toBe(true)
+  })
+})
