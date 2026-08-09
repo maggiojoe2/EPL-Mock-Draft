@@ -1,10 +1,7 @@
 import type React from 'react'
+import { TOTAL_ROUNDS } from './constants'
 import type { DraftState, PickRecord } from './types'
-import { buildCsvRows, toCsvString } from './export/exportRosters'
-
-// ── Constants ──────────────────────────────────────────────────────────────
-
-const TOTAL_ROUNDS = 16
+import { buildCsvRows, buildSlotTypeMap, slotKey, toCsvString } from './export/exportRosters'
 
 // ── Slot label config ──────────────────────────────────────────────────────
 
@@ -23,10 +20,10 @@ interface SummaryScreenProps {
 
 export default function SummaryScreen({ state, onBackToBoard }: SummaryScreenProps) {
   const { teams, pickHistory } = state
-  const csvRows = buildCsvRows(teams, pickHistory)
+  const typeMap = buildSlotTypeMap(teams, pickHistory)
 
   function handleExport() {
-    const csv = toCsvString(csvRows)
+    const csv = toCsvString(buildCsvRows(teams, pickHistory))
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -34,20 +31,6 @@ export default function SummaryScreen({ state, onBackToBoard }: SummaryScreenPro
     link.download = 'epl-draft-results.csv'
     link.click()
     URL.revokeObjectURL(url)
-  }
-
-  // Build a cellTypeMap for slot labels: (teamIndex, round) → pickType
-  const typeMap = new Map<string, PickRecord['pickType']>()
-  for (const rec of pickHistory) {
-    typeMap.set(`${rec.teamIndex}-${rec.round}`, rec.pickType)
-  }
-  // Franchise pre-fills aren't in pickHistory
-  for (let ti = 0; ti < teams.length; ti++) {
-    const team = teams[ti]!
-    if (team.franchisePlayer && team.roster[TOTAL_ROUNDS]?.id === team.franchisePlayer.id) {
-      const key = `${ti}-${TOTAL_ROUNDS}`
-      if (!typeMap.has(key)) typeMap.set(key, 'franchise')
-    }
   }
 
   return (
@@ -68,13 +51,13 @@ export default function SummaryScreen({ state, onBackToBoard }: SummaryScreenPro
       <div className="summary-body">
         <div className="summary-teams">
           {teams.map((team, ti) => (
-            <div key={ti} className="summary-card">
+            <div key={team.name} className="summary-card">
               <div className="summary-card-header">{team.name}</div>
               <ol className="summary-roster" start={1}>
                 {Array.from({ length: TOTAL_ROUNDS }, (_, ri) => {
                   const round = ri + 1
                   const player = team.roster[round]
-                  const cellType = typeMap.get(`${ti}-${round}`)
+                  const cellType = typeMap.get(slotKey(ti, round))
                   const badge = cellType ? SLOT_LABELS[cellType] : null
 
                   return (
