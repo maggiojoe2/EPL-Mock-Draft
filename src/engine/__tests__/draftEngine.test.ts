@@ -147,10 +147,11 @@ describe('draft completion', () => {
     const final = pickAll(state)
     expect(final.isDraftComplete).toBe(true)
     expect(final.pickHistory).toHaveLength(192)
-    // Each team's 16 roster slots should all be filled
+    // Each team's 16 roster slots should all be filled (no saves in this run)
     for (const team of final.teams) {
       const filled = team.roster.slice(1).filter(s => s !== null)
       expect(filled).toHaveLength(16)
     }
   })
+
 })

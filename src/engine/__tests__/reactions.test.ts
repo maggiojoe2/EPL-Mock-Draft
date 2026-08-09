@@ -50,6 +50,55 @@ describe('save mechanics', () => {
     expect(afterSave.teams[1]!.roster[15]).toEqual(player)
   })
 
+  it('INVOKE_SAVE removes the player from the picking team\'s roster (save blocks the pick)', () => {
+    const player = makePlayer(0)
+    const state = makeSaveState(player)
+    const afterPick = draftEngine(state, { type: 'PICK_PLAYER', player })
+    // Sanity: picking team (0) has the player before the save
+    expect(afterPick.teams[0]!.roster.some(p => p?.id === player.id)).toBe(true)
+
+    const afterSave = draftEngine(afterPick, { type: 'INVOKE_SAVE', player })
+    // After save: picking team should NOT have the player
+    expect(afterSave.teams[0]!.roster.every(p => p?.id !== player.id)).toBe(true)
+  })
+
+  it('INVOKE_SAVE removes the normal pick from pickHistory for the picking team', () => {
+    const player = makePlayer(0)
+    const state = makeSaveState(player)
+    const afterPick = draftEngine(state, { type: 'PICK_PLAYER', player })
+    const afterSave = draftEngine(afterPick, { type: 'INVOKE_SAVE', player })
+
+    // The only history entry should be the save (pickType 'save'), not a normal pick
+    const normalPickEntry = afterSave.pickHistory.find(
+      r => r.teamIndex === 0 && r.player.id === player.id && r.pickType === 'normal',
+    )
+    expect(normalPickEntry).toBeUndefined()
+  })
+
+  it('INVOKE_SAVE keeps the cursor at the picking team\'s position so they can pick again', () => {
+    const player = makePlayer(0)
+    const state = makeSaveState(player)
+    const afterPick = draftEngine(state, { type: 'PICK_PLAYER', player })
+    const afterSave = draftEngine(afterPick, { type: 'INVOKE_SAVE', player })
+
+    // Cursor must stay at round 1, team 0 — picker gets another turn
+    expect(afterSave.currentPick).toEqual({ round: 1, teamIndex: 0 })
+    expect(afterSave.pendingPrompt).toBeNull()
+  })
+
+  it('INVOKE_SAVE allows the picking team to successfully pick a different player next', () => {
+    const savedPlayer = makePlayer(0)
+    const nextPlayer = makePlayer(1)
+    const state = makeSaveState(savedPlayer)
+    const afterPick = draftEngine(state, { type: 'PICK_PLAYER', player: savedPlayer })
+    const afterSave = draftEngine(afterPick, { type: 'INVOKE_SAVE', player: savedPlayer })
+    // Picker tries again with nextPlayer
+    const afterRetry = draftEngine(afterSave, { type: 'PICK_PLAYER', player: nextPlayer })
+
+    expect(afterRetry.teams[0]!.roster[1]).toEqual(nextPlayer)
+    expect(afterRetry.currentPick).toEqual({ round: 1, teamIndex: 1 }) // now advances
+  })
+
   it('INVOKE_SAVE decrements lastAvailableRound from 15 to 14', () => {
     const player = makePlayer(0)
     const state = makeSaveState(player)

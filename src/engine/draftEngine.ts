@@ -1,4 +1,5 @@
 import type { Action, DraftState, PickRecord, Player, Team } from '../types'
+import { aiPickPlayer, aiShouldReact } from './aiSimulator'
 
 const TOTAL_ROUNDS = 16
 
@@ -202,31 +203,48 @@ export function draftEngine(state: DraftState, action: Action): DraftState {
 
     case 'INVOKE_SAVE': {
       if (!state.pendingPrompt || state.pendingPrompt.kind !== 'save') return state
-      const { reactingTeamIndex, player } = state.pendingPrompt
+      const { pickingTeamIndex, reactingTeamIndex, player } = state.pendingPrompt
 
+      // A save blocks the original pick: remove the player from the picking team's
+      // roster and strip the normal pick record from history.
+      const pickingTeam = state.teams[pickingTeamIndex]!
+      const blockedRound = pickingTeam.roster.findIndex(p => p?.id === player.id)
+      const unblockedPickingTeam = placeInRoster(pickingTeam, blockedRound, null)
+
+      // Place the player in the saving team's back slot.
       const reactingTeam = state.teams[reactingTeamIndex]!
       const targetRound = reactingTeam.lastAvailableRound
-
-      const updatedTeam: Team = {
+      const updatedReactingTeam: Team = {
         ...placeInRoster(reactingTeam, targetRound, player),
         saveUsedThisDraft: true,
         lastAvailableRound: targetRound - 1,
       }
-      const teams = state.teams.map((t, i) => (i === reactingTeamIndex ? updatedTeam : t))
 
-      const record: PickRecord = {
-        round: targetRound,
-        teamIndex: reactingTeamIndex,
-        player,
-        pickType: 'save',
-      }
-      const pickHistory = [...state.pickHistory, record]
+      const teams = state.teams.map((t, i) => {
+        if (i === pickingTeamIndex) return unblockedPickingTeam
+        if (i === reactingTeamIndex) return updatedReactingTeam
+        return t
+      })
 
+      // Drop the voided normal pick from history; add the save record.
+      const pickHistory = [
+        ...state.pickHistory.filter(
+          r => !(r.teamIndex === pickingTeamIndex && r.player.id === player.id && r.pickType === 'normal'),
+        ),
+        { round: targetRound, teamIndex: reactingTeamIndex, player, pickType: 'save' as const },
+      ]
+
+      // The save blocks the pick — cursor stays at the picking team's position
+      // so they can pick again. Clear remaining reactions (they all referenced
+      // the now-blocked pick).
       return {
         ...state,
         teams,
         pickHistory,
-        ...resolveReaction(state, teams),
+        pendingPrompt: null,
+        reactionQueue: [],
+        currentPick: state.currentPick, // unchanged — picker tries again
+        isDraftComplete: false,
       }
     }
 
@@ -280,9 +298,41 @@ export function draftEngine(state: DraftState, action: Action): DraftState {
       }
     }
 
-    case 'ADVANCE_SIMULATION':
-      // Handled by the simulation runner in aiSimulator; engine state unchanged.
-      return state
+    case 'ADVANCE_SIMULATION': {
+      if (state.isDraftComplete) return state
+
+      if (state.pendingPrompt) {
+        // Never auto-resolve a prompt the user must answer in practice mode.
+        const isUserReaction =
+          state.mode === 'practice' &&
+          state.userTeamIndex !== null &&
+          state.pendingPrompt.reactingTeamIndex === state.userTeamIndex
+        if (isUserReaction) return state
+
+        // Resolve an AI team's reaction.
+        const prompt = state.pendingPrompt
+        if (prompt.kind === 'save') {
+          if (aiShouldReact(prompt.player.adp)) {
+            return draftEngine(state, { type: 'INVOKE_SAVE', player: prompt.player })
+          }
+          return draftEngine(state, { type: 'DECLINE_SAVE' })
+        }
+        // pullback
+        const opts = prompt.pullbackOptions
+        if (opts.length > 0 && aiShouldReact(opts[0]!.adp)) {
+          return draftEngine(state, { type: 'INVOKE_PULLBACK', pullbackPlayer: opts[0]! })
+        }
+        return draftEngine(state, { type: 'DECLINE_PULLBACK' })
+      }
+
+      const { teamIndex } = state.currentPick
+      // Don't advance past the user's turn in practice mode.
+      if (state.mode === 'practice' && teamIndex === state.userTeamIndex) return state
+
+      const player = aiPickPlayer(state.availablePool)
+      if (!player) return state
+      return draftEngine(state, { type: 'PICK_PLAYER', player })
+    }
 
     default:
       return state

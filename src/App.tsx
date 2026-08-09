@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { useEffect, useMemo, useReducer, useRef } from 'react'
 import { draftEngine } from './engine/draftEngine'
-import { aiPickPlayer, aiShouldReact } from './engine/aiSimulator'
 import SetupScreen from './setup/SetupScreen'
-import type { DraftState, Player } from './types'
+import type { DraftState, PickRecord, Player } from './types'
 import './App.css'
 
 // ── Constants ─────────────────────────────────────────────────────────────
@@ -12,7 +11,10 @@ const TOTAL_ROUNDS = 16
 // ── App (router) ───────────────────────────────────────────────────────────
 
 export default function App() {
-  const [draftState, setDraftState] = useState<DraftState | null>(null)
+  const [draftState, setDraftState] = useReducer(
+    (_: DraftState | null, s: DraftState) => s,
+    null,
+  )
 
   if (!draftState) {
     return <SetupScreen onDraftStart={setDraftState} />
@@ -30,64 +32,45 @@ function DraftView({ initialState }: { initialState: DraftState }) {
   )
   const simulatingRef = useRef(false)
 
-  /** Run the next AI step: resolve pending prompt or make the next pick. */
-  const runAiStep = useCallback((s: DraftState) => {
-    if (s.isDraftComplete) return
-    if (s.pendingPrompt) {
-      const { kind } = s.pendingPrompt
-      if (kind === 'save') {
-        if (aiShouldReact(s.pendingPrompt.player.adp)) {
-          dispatch({ type: 'INVOKE_SAVE', player: s.pendingPrompt.player })
-        } else {
-          dispatch({ type: 'DECLINE_SAVE' })
-        }
-      } else {
-        // pullback
-        const opts = s.pendingPrompt.pullbackOptions
-        if (opts.length > 0 && aiShouldReact(opts[0]!.adp)) {
-          dispatch({ type: 'INVOKE_PULLBACK', pullbackPlayer: opts[0]! })
-        } else {
-          dispatch({ type: 'DECLINE_PULLBACK' })
-        }
-      }
-      return
-    }
+  const { teams, currentPick, availablePool, isDraftComplete, pendingPrompt, mode, userTeamIndex } = state
 
-    const { teamIndex } = s.currentPick
-    if (s.userTeamIndex !== null && teamIndex === s.userTeamIndex) return // user's turn
+  // In practice mode, stop the AI clock when it's the user's turn to pick or
+  // when the user's team has a pending reaction that needs a decision.
+  const isUserTurn =
+    mode === 'practice' && !pendingPrompt && currentPick.teamIndex === userTeamIndex
 
-    const player = aiPickPlayer(s.availablePool)
-    if (player) dispatch({ type: 'PICK_PLAYER', player })
-  }, [])
+  const isUserReactionPending =
+    mode === 'practice' &&
+    pendingPrompt !== null &&
+    pendingPrompt.reactingTeamIndex === userTeamIndex
 
-  // Auto-advance AI turns
+  // Auto-advance AI turns via ADVANCE_SIMULATION (engine handles AI logic).
   useEffect(() => {
-    if (state.isDraftComplete) { simulatingRef.current = false; return }
-    const isUserTurn =
-      state.mode === 'practice' &&
-      !state.pendingPrompt &&
-      state.currentPick.teamIndex === state.userTeamIndex
-    if (isUserTurn) { simulatingRef.current = false; return }
+    if (isDraftComplete) { simulatingRef.current = false; return }
+    if (isUserTurn || isUserReactionPending) { simulatingRef.current = false; return }
 
     simulatingRef.current = true
+    // Watch mode uses a longer delay so picks are readable; practice mode stays snappy.
+    const delay = mode === 'watch' ? 500 : 120
     const id = setTimeout(() => {
-      if (simulatingRef.current) runAiStep(state)
-    }, 120)
+      if (simulatingRef.current) dispatch({ type: 'ADVANCE_SIMULATION' })
+    }, delay)
     return () => clearTimeout(id)
-  }, [state, runAiStep])
+  }, [state, isUserTurn, isUserReactionPending, isDraftComplete, mode])
 
-  const { teams, currentPick, availablePool, isDraftComplete, pendingPrompt } = state
-  const isUserTurn =
-    state.mode === 'practice' &&
-    !pendingPrompt &&
-    currentPick.teamIndex === state.userTeamIndex
+  // Previous-year player IDs for the user's team (used to highlight pool entries).
+  const prevYearPlayerIds = useMemo(() => {
+    if (userTeamIndex === null) return new Set<string>()
+    const userTeam = teams[userTeamIndex]
+    if (!userTeam) return new Set<string>()
+    return new Set(userTeam.previousYearRoster.map(p => p.id))
+  }, [teams, userTeamIndex])
 
-  // Only show the reaction modal when it's the user's own team reacting.
-  // AI reactions are resolved silently by runAiStep.
-  const isUserReaction =
-    state.mode === 'practice' &&
-    pendingPrompt !== null &&
-    pendingPrompt.reactingTeamIndex === state.userTeamIndex
+  // Build a map of cell types from pickHistory + franchise pre-fills.
+  const cellTypeMap = useMemo(
+    () => buildCellTypeMap(teams, state.pickHistory),
+    [teams, state.pickHistory],
+  )
 
   return (
     <div className="app">
@@ -96,7 +79,7 @@ function DraftView({ initialState }: { initialState: DraftState }) {
         <span className="status-badge">
           {isDraftComplete
             ? '✅ Draft Complete'
-            : isUserReaction
+            : isUserReactionPending
               ? `⚡ Reaction — ${teams[pendingPrompt!.reactingTeamIndex]!.name}`
               : isUserTurn
                 ? `🎯 Your pick — Round ${currentPick.round}`
@@ -104,7 +87,7 @@ function DraftView({ initialState }: { initialState: DraftState }) {
         </span>
       </header>
 
-      {isUserReaction && (
+      {isUserReactionPending && (
         <ReactionModal
           prompt={pendingPrompt}
           teams={teams}
@@ -122,6 +105,8 @@ function DraftView({ initialState }: { initialState: DraftState }) {
             currentPick={currentPick}
             totalRounds={TOTAL_ROUNDS}
             isDraftComplete={isDraftComplete}
+            cellTypeMap={cellTypeMap}
+            userTeamIndex={userTeamIndex}
           />
         </section>
 
@@ -131,6 +116,7 @@ function DraftView({ initialState }: { initialState: DraftState }) {
             <PlayerList
               players={availablePool}
               isUserTurn={isUserTurn}
+              prevYearPlayerIds={prevYearPlayerIds}
               onPick={(player) => dispatch({ type: 'PICK_PLAYER', player })}
             />
           </section>
@@ -140,6 +126,33 @@ function DraftView({ initialState }: { initialState: DraftState }) {
   )
 }
 
+// ── buildCellTypeMap ───────────────────────────────────────────────────────
+
+/** Return a map of `"teamIndex-round"` → pickType for all filled cells. */
+function buildCellTypeMap(
+  teams: DraftState['teams'],
+  pickHistory: PickRecord[],
+): Map<string, PickRecord['pickType']> {
+  const map = new Map<string, PickRecord['pickType']>()
+
+  // Normal / save / pullback picks are in history.
+  for (const record of pickHistory) {
+    map.set(`${record.teamIndex}-${record.round}`, record.pickType)
+  }
+
+  // Franchise pre-fills are placed by initDraft (not through PICK_PLAYER) so
+  // they have no history entry — detect them from the team's franchisePlayer.
+  for (let ti = 0; ti < teams.length; ti++) {
+    const team = teams[ti]!
+    if (team.franchisePlayer && team.roster[16]?.id === team.franchisePlayer.id) {
+      const key = `${ti}-16`
+      if (!map.has(key)) map.set(key, 'franchise')
+    }
+  }
+
+  return map
+}
+
 // ── DraftBoard ─────────────────────────────────────────────────────────────
 
 interface DraftBoardProps {
@@ -147,47 +160,68 @@ interface DraftBoardProps {
   currentPick: DraftState['currentPick']
   totalRounds: number
   isDraftComplete: boolean
+  cellTypeMap: Map<string, PickRecord['pickType']>
+  userTeamIndex: number | null
 }
 
-function DraftBoard({ teams, currentPick, totalRounds, isDraftComplete }: DraftBoardProps) {
+function DraftBoard({
+  teams,
+  currentPick,
+  totalRounds,
+  isDraftComplete,
+  cellTypeMap,
+  userTeamIndex,
+}: DraftBoardProps) {
   return (
     <div className="board-wrapper">
       <table className="draft-board">
         <thead>
           <tr>
             <th className="round-label">Rd</th>
-            {teams.map((t, i) => (
-              <th
-                key={i}
-                className={
-                  !isDraftComplete && i === currentPick.teamIndex
-                    ? 'team-header active-col'
-                    : 'team-header'
-                }
-              >
-                {t.name}
-              </th>
-            ))}
+            {teams.map((t, i) => {
+              const isActive = !isDraftComplete && i === currentPick.teamIndex
+              const isUser = i === userTeamIndex
+              const cls = [
+                'team-header',
+                isActive ? 'active-col' : '',
+                isUser ? 'user-col' : '',
+              ].filter(Boolean).join(' ')
+              return (
+                <th key={i} className={cls}>
+                  {t.name}
+                  {isUser && <span className="you-badge"> (you)</span>}
+                </th>
+              )
+            })}
           </tr>
         </thead>
         <tbody>
           {Array.from({ length: totalRounds }, (_, ri) => {
             const round = ri + 1
+            const isActiveRound = !isDraftComplete && round === currentPick.round
             return (
-              <tr key={round}>
+              <tr key={round} className={isActiveRound ? 'active-row' : ''}>
                 <td className="round-label">{round}</td>
                 {teams.map((team, ti) => {
                   const player = team.roster[round]
-                  const isActive =
-                    !isDraftComplete &&
-                    currentPick.round === round &&
-                    currentPick.teamIndex === ti
+                  const isActive = isActiveRound && currentPick.teamIndex === ti
+                  const cellType = cellTypeMap.get(`${ti}-${round}`)
+
+                  let cellClass = 'pick-cell'
+                  if (isActive) cellClass += ' active-cell'
+                  if (cellType === 'franchise') cellClass += ' pick-cell--franchise'
+                  else if (cellType === 'save') cellClass += ' pick-cell--save'
+                  else if (cellType === 'pullback') cellClass += ' pick-cell--pullback'
+
                   return (
-                    <td key={ti} className={isActive ? 'pick-cell active-cell' : 'pick-cell'}>
+                    <td key={ti} className={cellClass}>
                       {player ? (
                         <span className="player-chip">
                           <span className="pos">{player.position}</span>
                           {player.name}
+                          {cellType === 'franchise' && <span className="chip-badge chip-badge--fp">★ FP</span>}
+                          {cellType === 'save' && <span className="chip-badge chip-badge--save">💾</span>}
+                          {cellType === 'pullback' && <span className="chip-badge chip-badge--pb">↩</span>}
                         </span>
                       ) : isActive ? (
                         <span className="on-clock">on the clock</span>
@@ -209,25 +243,34 @@ function DraftBoard({ teams, currentPick, totalRounds, isDraftComplete }: DraftB
 interface PlayerListProps {
   players: Player[]
   isUserTurn: boolean
+  prevYearPlayerIds: Set<string>
   onPick: (player: Player) => void
 }
 
-function PlayerList({ players, isUserTurn, onPick }: PlayerListProps) {
+function PlayerList({ players, isUserTurn, prevYearPlayerIds, onPick }: PlayerListProps) {
   return (
     <ul className="player-list">
-      {players.slice(0, 80).map(player => (
-        <li key={player.id} className="player-row">
-          <span className="adp">#{player.adp}</span>
-          <span className="pos">{player.position}</span>
-          <span className="name">{player.name}</span>
-          <span className="nfl-team">{player.nflTeam}</span>
-          {isUserTurn && (
-            <button className="pick-btn" onClick={() => onPick(player)}>
-              Draft
-            </button>
-          )}
-        </li>
-      ))}
+      {players.slice(0, 80).map(player => {
+        const isPrevYear = prevYearPlayerIds.has(player.id)
+        return (
+          <li
+            key={player.id}
+            className={`player-row${isPrevYear ? ' player-row--prev-year' : ''}`}
+            title={isPrevYear ? 'Previous-year player' : undefined}
+          >
+            <span className="adp">#{player.adp}</span>
+            <span className="pos">{player.position}</span>
+            <span className="name">{player.name}</span>
+            <span className="nfl-team">{player.nflTeam}</span>
+            {isPrevYear && <span className="prev-year-badge">★</span>}
+            {isUserTurn && (
+              <button className="pick-btn" onClick={() => onPick(player)}>
+                Draft
+              </button>
+            )}
+          </li>
+        )
+      })}
       {players.length > 80 && (
         <li className="more-players">+{players.length - 80} more players…</li>
       )}

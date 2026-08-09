@@ -9,8 +9,9 @@ export function initDraft(params: {
 }): DraftState {
   const { mode, userTeamIndex, availablePool } = params
 
-  // Pre-place franchise players in round 16 and remove from pool
-  let pool = [...availablePool]
+  // Pre-place franchise players in round 16 and remove from pool.
+  // Sort ascending by ADP so the best available players appear at the top.
+  let pool = [...availablePool].sort((a, b) => a.adp - b.adp)
   const teams = params.teams.map(team => {
     if (!team.franchisePlayer) return team
     pool = pool.filter(p => p.id !== team.franchisePlayer!.id)
