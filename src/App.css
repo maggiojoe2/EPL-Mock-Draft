@@ -1,0 +1,243 @@
+/* ── Reset & base ─────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --border: #2d3148;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --accent: #6366f1;
+  --accent-hover: #818cf8;
+  --green: #22c55e;
+  --amber: #f59e0b;
+  --red: #ef4444;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 13px;
+}
+
+body { background: var(--bg); color: var(--text); }
+
+/* ── Layout ───────────────────────────────────────────────────────────── */
+.app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.app-header h1 { font-size: 16px; font-weight: 700; letter-spacing: .5px; }
+
+.status-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: var(--border);
+  color: var(--text);
+}
+
+.main-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Draft board ──────────────────────────────────────────────────────── */
+.board-section {
+  flex: 1;
+  overflow: auto;
+  padding: 12px;
+}
+
+.board-wrapper { min-width: max-content; }
+
+.draft-board {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.draft-board th,
+.draft-board td {
+  border: 1px solid var(--border);
+  padding: 3px 6px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.draft-board thead th {
+  background: var(--surface);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: left;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.round-label {
+  background: var(--surface) !important;
+  color: var(--muted) !important;
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 28px;
+  text-align: center;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+
+.team-header { min-width: 110px; }
+.team-header.active-col { color: var(--accent-hover) !important; }
+
+.pick-cell { min-width: 110px; height: 28px; }
+
+.pick-cell.active-cell {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  outline: 1px solid var(--accent);
+}
+
+.player-chip {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 11px;
+}
+
+.pos {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--border);
+  color: var(--muted);
+}
+
+.on-clock {
+  font-size: 10px;
+  color: var(--accent);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: .4 } }
+
+/* ── Player list ──────────────────────────────────────────────────────── */
+.pool-section {
+  width: 280px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pool-section h2 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.player-list {
+  list-style: none;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.player-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+  font-size: 12px;
+}
+
+.player-row:hover { background: var(--surface); }
+
+.adp { color: var(--muted); font-size: 11px; min-width: 28px; }
+.name { flex: 1; font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+.nfl-team { color: var(--muted); font-size: 11px; }
+
+.more-players {
+  padding: 8px 12px;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────── */
+.pick-btn {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  background: var(--accent);
+  color: #fff;
+  flex-shrink: 0;
+}
+.pick-btn:hover { background: var(--accent-hover); }
+
+.btn-primary, .btn-secondary {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-secondary { background: var(--border); color: var(--text); }
+.btn-secondary:hover { background: color-mix(in srgb, var(--border) 80%, white); }
+
+/* ── Modal ────────────────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  width: 420px;
+  max-width: calc(100vw - 32px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modal h3 { font-size: 18px; font-weight: 700; }
+.modal p { color: var(--muted); line-height: 1.5; }
+.modal p strong { color: var(--text); }
+
+.modal-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.pullback-options {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.pullback-options li { display: flex; }
+.pullback-options .btn-primary { width: 100%; justify-content: flex-start; text-align: left; }
