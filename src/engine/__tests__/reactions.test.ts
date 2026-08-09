@@ -1,24 +1,35 @@
 import { describe, it, expect } from 'vitest'
 import { draftEngine } from '../draftEngine'
 import { makeDraftState, makePlayer, makeTeam } from '../testHelpers'
+import type { DraftState } from '../../types'
+
+// ── Shared save-scenario factory ───────────────────────────────────────────
+
+/**
+ * Build a DraftState where team 1 owns `player` and is eligible to save it.
+ * Team 0 is currently on the clock (round 1, teamIndex 0).
+ */
+function makeSaveState(player = makePlayer(0), teamOverrides = {}): DraftState {
+  const ownerTeam = makeTeam({
+    name: 'Owner',
+    previousYearRoster: [player],
+    saveHistory: new Set(),
+    saveUsedThisDraft: false,
+    lastAvailableRound: 15,
+    ...teamOverrides,
+  })
+  const teams = Array.from({ length: 12 }, (_, i) =>
+    i === 1 ? ownerTeam : makeTeam({ name: `Team ${i}` }),
+  )
+  return makeDraftState({ teams, currentPick: { round: 1, teamIndex: 0 } })
+}
 
 // ── Save mechanics ─────────────────────────────────────────────────────────
 
 describe('save mechanics', () => {
   it('sets a save pendingPrompt when a saveable previous-year player is picked', () => {
     const player = makePlayer(0)
-    // team 1 owns this player and has never saved them
-    const ownerTeam = makeTeam({
-      name: 'Owner',
-      previousYearRoster: [player],
-      saveHistory: new Set(),
-      saveUsedThisDraft: false,
-      lastAvailableRound: 15,
-    })
-    const teams = Array.from({ length: 12 }, (_, i) =>
-      i === 1 ? ownerTeam : makeTeam({ name: `Team ${i}` }),
-    )
-    const state = makeDraftState({ teams, currentPick: { round: 1, teamIndex: 0 } })
+    const state = makeSaveState(player)
 
     const next = draftEngine(state, { type: 'PICK_PLAYER', player })
 
@@ -32,17 +43,7 @@ describe('save mechanics', () => {
 
   it('INVOKE_SAVE places the player in lastAvailableRound of the reacting team', () => {
     const player = makePlayer(0)
-    const ownerTeam = makeTeam({
-      name: 'Owner',
-      previousYearRoster: [player],
-      saveHistory: new Set(),
-      saveUsedThisDraft: false,
-      lastAvailableRound: 15,
-    })
-    const teams = Array.from({ length: 12 }, (_, i) =>
-      i === 1 ? ownerTeam : makeTeam({ name: `Team ${i}` }),
-    )
-    const state = makeDraftState({ teams, currentPick: { round: 1, teamIndex: 0 } })
+    const state = makeSaveState(player)
     const afterPick = draftEngine(state, { type: 'PICK_PLAYER', player })
     const afterSave = draftEngine(afterPick, { type: 'INVOKE_SAVE', player })
 
@@ -51,17 +52,7 @@ describe('save mechanics', () => {
 
   it('INVOKE_SAVE decrements lastAvailableRound from 15 to 14', () => {
     const player = makePlayer(0)
-    const ownerTeam = makeTeam({
-      name: 'Owner',
-      previousYearRoster: [player],
-      saveHistory: new Set(),
-      saveUsedThisDraft: false,
-      lastAvailableRound: 15,
-    })
-    const teams = Array.from({ length: 12 }, (_, i) =>
-      i === 1 ? ownerTeam : makeTeam({ name: `Team ${i}` }),
-    )
-    const state = makeDraftState({ teams, currentPick: { round: 1, teamIndex: 0 } })
+    const state = makeSaveState(player)
     const afterPick = draftEngine(state, { type: 'PICK_PLAYER', player })
     const afterSave = draftEngine(afterPick, { type: 'INVOKE_SAVE', player })
 
@@ -71,17 +62,7 @@ describe('save mechanics', () => {
 
   it('INVOKE_SAVE marks saveUsedThisDraft on the reacting team', () => {
     const player = makePlayer(0)
-    const ownerTeam = makeTeam({
-      name: 'Owner',
-      previousYearRoster: [player],
-      saveHistory: new Set(),
-      saveUsedThisDraft: false,
-      lastAvailableRound: 15,
-    })
-    const teams = Array.from({ length: 12 }, (_, i) =>
-      i === 1 ? ownerTeam : makeTeam({ name: `Team ${i}` }),
-    )
-    const state = makeDraftState({ teams, currentPick: { round: 1, teamIndex: 0 } })
+    const state = makeSaveState(player)
     const afterPick = draftEngine(state, { type: 'PICK_PLAYER', player })
     const afterSave = draftEngine(afterPick, { type: 'INVOKE_SAVE', player })
 
@@ -90,36 +71,15 @@ describe('save mechanics', () => {
 
   it('does not offer a save when the team already used their save this draft', () => {
     const player = makePlayer(0)
-    const ownerTeam = makeTeam({
-      name: 'Owner',
-      previousYearRoster: [player],
-      saveHistory: new Set(),
-      saveUsedThisDraft: true, // already saved
-      lastAvailableRound: 14,
-    })
-    const teams = Array.from({ length: 12 }, (_, i) =>
-      i === 1 ? ownerTeam : makeTeam({ name: `Team ${i}` }),
-    )
-    const state = makeDraftState({ teams, currentPick: { round: 1, teamIndex: 0 } })
+    const state = makeSaveState(player, { saveUsedThisDraft: true, lastAvailableRound: 14 })
     const next = draftEngine(state, { type: 'PICK_PLAYER', player })
 
-    // No save prompt — but may have pullback since no pullback options here either
     expect(next.pendingPrompt?.kind).not.toBe('save')
   })
 
   it('does not offer a save for a player in the team save history', () => {
     const player = makePlayer(0)
-    const ownerTeam = makeTeam({
-      name: 'Owner',
-      previousYearRoster: [player],
-      saveHistory: new Set([player.id]), // previously saved
-      saveUsedThisDraft: false,
-      lastAvailableRound: 15,
-    })
-    const teams = Array.from({ length: 12 }, (_, i) =>
-      i === 1 ? ownerTeam : makeTeam({ name: `Team ${i}` }),
-    )
-    const state = makeDraftState({ teams, currentPick: { round: 1, teamIndex: 0 } })
+    const state = makeSaveState(player, { saveHistory: new Set([player.id]) })
     const next = draftEngine(state, { type: 'PICK_PLAYER', player })
 
     expect(next.pendingPrompt?.kind).not.toBe('save')
@@ -127,17 +87,7 @@ describe('save mechanics', () => {
 
   it('DECLINE_SAVE advances the pick cursor without saving', () => {
     const player = makePlayer(0)
-    const ownerTeam = makeTeam({
-      name: 'Owner',
-      previousYearRoster: [player],
-      saveHistory: new Set(),
-      saveUsedThisDraft: false,
-      lastAvailableRound: 15,
-    })
-    const teams = Array.from({ length: 12 }, (_, i) =>
-      i === 1 ? ownerTeam : makeTeam({ name: `Team ${i}` }),
-    )
-    const state = makeDraftState({ teams, currentPick: { round: 1, teamIndex: 0 } })
+    const state = makeSaveState(player)
     const afterPick = draftEngine(state, { type: 'PICK_PLAYER', player })
     const afterDecline = draftEngine(afterPick, { type: 'DECLINE_SAVE' })
 
@@ -146,24 +96,12 @@ describe('save mechanics', () => {
     expect(afterDecline.teams[1]!.saveUsedThisDraft).toBe(false)
   })
 
-  it('does not offer a save when lastAvailableRound < currentRound', () => {
+  it('does not offer a save when lastAvailableRound <= currentRound', () => {
     const player = makePlayer(0)
-    // Team has exhausted all their back slots
-    const ownerTeam = makeTeam({
-      name: 'Owner',
-      previousYearRoster: [player],
-      saveHistory: new Set(),
-      saveUsedThisDraft: false,
-      lastAvailableRound: 2, // current round is 3, so no room
-    })
-    const teams = Array.from({ length: 12 }, (_, i) =>
-      i === 1 ? ownerTeam : makeTeam({ name: `Team ${i}` }),
-    )
-    const state = makeDraftState({
-      teams,
-      currentPick: { round: 3, teamIndex: 0 },
-    })
-    const next = draftEngine(state, { type: 'PICK_PLAYER', player })
+    // lastAvailableRound (2) is not strictly greater than currentRound (3)
+    const state = makeSaveState(player, { lastAvailableRound: 2 })
+    const stateAtRound3 = { ...state, currentPick: { round: 3, teamIndex: 0 } }
+    const next = draftEngine(stateAtRound3, { type: 'PICK_PLAYER', player })
 
     expect(next.pendingPrompt).toBeNull()
   })

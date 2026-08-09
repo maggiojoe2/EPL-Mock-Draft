@@ -39,6 +39,18 @@ function totalPicksFilled(teams: Team[]): number {
   }, 0)
 }
 
+/** Return the first unfilled roster slot >= fromRound for the given team.
+ *  Saves and pullbacks fill from the back; a normal pick must skip any such
+ *  pre-filled slots so it never overwrites them. */
+function nextNormalSlot(team: Team, fromRound: number): number {
+  for (let r = fromRound; r <= TOTAL_ROUNDS; r++) {
+    if (team.roster[r] === null) return r
+  }
+  // Should never happen in a well-formed draft: the engine only reaches here
+  // if the team's roster is already full, but the draft would be complete.
+  throw new Error(`No open normal slot for team "${team.name}" starting at round ${fromRound}`)
+}
+
 // ── Reaction helpers ───────────────────────────────────────────────────────
 
 /** Check whether any team can save or pull back on a just-picked player.
@@ -56,12 +68,14 @@ function buildReactionQueue(
     const ownsPlayer = team.previousYearRoster.some(p => p.id === pickedPlayer.id)
     if (!ownsPlayer) continue
 
+    // A reaction is only allowed when the team still has a back-slot ahead of
+    // the current round (strictly greater, to avoid filling a slot the cursor
+    // will visit as a normal pick this same round).
     const hasRoomForReaction =
-      team.lastAvailableRound >= state.currentPick.round
+      team.lastAvailableRound > state.currentPick.round
 
     // Save check: player must be saveable and team hasn't used save this draft
     const isSaveable =
-      ownsPlayer &&
       !team.saveHistory.has(pickedPlayer.id) &&
       !team.saveUsedThisDraft &&
       hasRoomForReaction
@@ -73,7 +87,7 @@ function buildReactionQueue(
         reactingTeamIndex: ti,
         player: pickedPlayer,
       })
-      // Save and pullback are mutually exclusive per player-pick; after push, continue
+      // Save and pullback are mutually exclusive per player-pick
       continue
     }
 
@@ -97,7 +111,7 @@ function buildReactionQueue(
   return queue
 }
 
-// ── Queue helpers ──────────────────────────────────────────────────────────
+// ── Queue / completion helpers ─────────────────────────────────────────────
 
 function dequeue(queue: DraftState['reactionQueue']): {
   head: DraftState['pendingPrompt']
@@ -108,6 +122,31 @@ function dequeue(queue: DraftState['reactionQueue']): {
   return { head: head!, tail }
 }
 
+/** Shared tail logic for every reaction handler: dequeue next prompt, advance
+ *  the pick cursor when all reactions are resolved, and check for completion. */
+function resolveReaction(
+  state: DraftState,
+  teams: DraftState['teams'],
+): Pick<DraftState, 'currentPick' | 'pendingPrompt' | 'reactionQueue' | 'isDraftComplete'> {
+  const { head: pendingPrompt, tail: reactionQueue } = dequeue(state.reactionQueue)
+
+  const { round, teamIndex } = state.currentPick
+  const next = pendingPrompt === null ? nextPick(round, teamIndex) : null
+
+  const totalFilled = totalPicksFilled(teams)
+  const isDraftComplete =
+    pendingPrompt === null &&
+    reactionQueue.length === 0 &&
+    totalFilled === TOTAL_TEAMS * TOTAL_ROUNDS
+
+  return {
+    currentPick: next ?? state.currentPick,
+    pendingPrompt,
+    reactionQueue,
+    isDraftComplete,
+  }
+}
+
 // ── Engine ─────────────────────────────────────────────────────────────────
 
 export function draftEngine(state: DraftState, action: Action): DraftState {
@@ -116,14 +155,18 @@ export function draftEngine(state: DraftState, action: Action): DraftState {
       const { player } = action
       const { round, teamIndex } = state.currentPick
 
-      // Place player in picking team's roster
-      const updatedTeam = placeInRoster(state.teams[teamIndex]!, round, player)
+      const pickingTeam = state.teams[teamIndex]!
+
+      // Slot for this normal pick: scan forward past any pre-filled slots
+      // (saves or pullbacks placed there earlier in the draft).
+      const targetRound = nextNormalSlot(pickingTeam, round)
+      const updatedTeam = placeInRoster(pickingTeam, targetRound, player)
       const teams = state.teams.map((t, i) => (i === teamIndex ? updatedTeam : t))
 
       const availablePool = removeFromPool(state.availablePool, player)
 
       const record: PickRecord = {
-        round,
+        round: targetRound,
         teamIndex,
         player,
         pickType: 'normal',
@@ -137,10 +180,8 @@ export function draftEngine(state: DraftState, action: Action): DraftState {
         teamIndex,
       )
 
-      // Determine if there's an immediate pending prompt
       const { head: pendingPrompt, tail: remainingQueue } = dequeue(reactionQueue)
 
-      // If no reactions, advance the pick cursor
       const totalFilled = totalPicksFilled(teams)
       const isDraftComplete =
         reactionQueue.length === 0 && totalFilled === TOTAL_TEAMS * TOTAL_ROUNDS
@@ -181,46 +222,20 @@ export function draftEngine(state: DraftState, action: Action): DraftState {
       }
       const pickHistory = [...state.pickHistory, record]
 
-      // Dequeue next reaction
-      const { head: pendingPrompt, tail: remainingQueue } = dequeue(state.reactionQueue)
-
-      const { round, teamIndex } = state.currentPick
-      const totalFilled = totalPicksFilled(teams)
-      const isDraftComplete =
-        remainingQueue.length === 0 && pendingPrompt === null && totalFilled === TOTAL_TEAMS * TOTAL_ROUNDS
-
-      const next = pendingPrompt === null ? nextPick(round, teamIndex) : null
-
       return {
         ...state,
         teams,
         pickHistory,
-        currentPick: next ?? state.currentPick,
-        pendingPrompt,
-        reactionQueue: remainingQueue,
-        isDraftComplete,
+        ...resolveReaction(state, teams),
       }
     }
 
     case 'DECLINE_SAVE': {
       if (!state.pendingPrompt || state.pendingPrompt.kind !== 'save') return state
 
-      // Dequeue next reaction (may be a pullback on the same pick)
-      const { head: pendingPrompt, tail: remainingQueue } = dequeue(state.reactionQueue)
-
-      const { round, teamIndex } = state.currentPick
-      const next = pendingPrompt === null ? nextPick(round, teamIndex) : null
-
-      const totalFilled = totalPicksFilled(state.teams)
-      const isDraftComplete =
-        pendingPrompt === null && remainingQueue.length === 0 && totalFilled === TOTAL_TEAMS * TOTAL_ROUNDS
-
       return {
         ...state,
-        currentPick: next ?? state.currentPick,
-        pendingPrompt,
-        reactionQueue: remainingQueue,
-        isDraftComplete,
+        ...resolveReaction(state, state.teams),
       }
     }
 
@@ -247,50 +262,26 @@ export function draftEngine(state: DraftState, action: Action): DraftState {
       }
       const pickHistory = [...state.pickHistory, record]
 
-      const { head: pendingPrompt, tail: remainingQueue } = dequeue(state.reactionQueue)
-
-      const { round, teamIndex } = state.currentPick
-      const totalFilled = totalPicksFilled(teams)
-      const isDraftComplete =
-        pendingPrompt === null && remainingQueue.length === 0 && totalFilled === TOTAL_TEAMS * TOTAL_ROUNDS
-
-      const next = pendingPrompt === null ? nextPick(round, teamIndex) : null
-
       return {
         ...state,
         teams,
         availablePool,
         pickHistory,
-        currentPick: next ?? state.currentPick,
-        pendingPrompt,
-        reactionQueue: remainingQueue,
-        isDraftComplete,
+        ...resolveReaction(state, teams),
       }
     }
 
     case 'DECLINE_PULLBACK': {
       if (!state.pendingPrompt || state.pendingPrompt.kind !== 'pullback') return state
 
-      const { head: pendingPrompt, tail: remainingQueue } = dequeue(state.reactionQueue)
-
-      const { round, teamIndex } = state.currentPick
-      const next = pendingPrompt === null ? nextPick(round, teamIndex) : null
-
-      const totalFilled = totalPicksFilled(state.teams)
-      const isDraftComplete =
-        pendingPrompt === null && remainingQueue.length === 0 && totalFilled === TOTAL_TEAMS * TOTAL_ROUNDS
-
       return {
         ...state,
-        currentPick: next ?? state.currentPick,
-        pendingPrompt,
-        reactionQueue: remainingQueue,
-        isDraftComplete,
+        ...resolveReaction(state, state.teams),
       }
     }
 
     case 'ADVANCE_SIMULATION':
-      // Handled by the UI layer / simulation runner; engine is a no-op here.
+      // Handled by the simulation runner in aiSimulator; engine state unchanged.
       return state
 
     default:

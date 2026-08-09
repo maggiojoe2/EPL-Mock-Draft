@@ -1,31 +1,9 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react'
 import { draftEngine } from './engine/draftEngine'
+import { aiPickPlayer, aiShouldReact } from './engine/aiSimulator'
 import { initDraft, makeDemoPlayers, makeDemoTeams } from './engine/initDraft'
 import type { DraftState, Player } from './types'
 import './App.css'
-
-// ── AI simulation ──────────────────────────────────────────────────────────
-
-/** Gaussian noise via Box-Muller. */
-function gaussianNoise(): number {
-  const u = 1 - Math.random()
-  const v = Math.random()
-  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v)
-}
-
-/** AI picks the best available player by ADP with Gaussian noise (σ = 5 ranks). */
-function aiPickPlayer(pool: Player[]): Player | null {
-  if (pool.length === 0) return null
-  const scored = pool.map(p => ({ player: p, score: p.adp + gaussianNoise() * 5 }))
-  scored.sort((a, b) => a.score - b.score)
-  return scored[0]!.player
-}
-
-/** AI reaction probability: higher for high-value players (low ADP). */
-function aiShouldReact(playerAdp: number): boolean {
-  const prob = Math.max(0.1, 1 - playerAdp / 100)
-  return Math.random() < prob
-}
 
 // ── Reducer ────────────────────────────────────────────────────────────────
 
@@ -107,11 +85,7 @@ export default function App() {
           {isDraftComplete
             ? '✅ Draft Complete'
             : pendingPrompt
-              ? `⚡ Reaction — ${teams[
-                  pendingPrompt.kind === 'save'
-                    ? pendingPrompt.reactingTeamIndex
-                    : pendingPrompt.reactingTeamIndex
-                ]!.name}`
+              ? `⚡ Reaction — ${teams[pendingPrompt.reactingTeamIndex]!.name}`
               : isUserTurn
                 ? `🎯 Your pick — Round ${currentPick.round}`
                 : `⏳ Round ${currentPick.round} · ${teams[currentPick.teamIndex]!.name}`}
