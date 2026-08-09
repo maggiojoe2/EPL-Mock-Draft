@@ -17,6 +17,7 @@ export function makeTeam(overrides: Partial<Team> = {}): Team {
     previousYearRoster: overrides.previousYearRoster ?? [],
     saveHistory: overrides.saveHistory ?? new Set(),
     franchisePlayer: overrides.franchisePlayer ?? null,
+    franchiseEligibleIds: overrides.franchiseEligibleIds ?? new Set(),
     saveUsedThisDraft: overrides.saveUsedThisDraft ?? false,
     lastAvailableRound: overrides.lastAvailableRound ?? 15,
   }

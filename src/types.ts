@@ -27,6 +27,8 @@ export interface Team {
   saveHistory: Set<string>
   /** The franchise player pre-declared for round 16. */
   franchisePlayer: Player | null
+  /** Player IDs from previousYearRoster that are franchise-eligible. */
+  franchiseEligibleIds: Set<string>
   /** Whether this team has already used their one save this draft. */
   saveUsedThisDraft: boolean
   /** Furthest-back open round available for saves/pullbacks (starts at 15). */

@@ -1,24 +1,29 @@
-import { useCallback, useEffect, useReducer, useRef } from 'react'
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { draftEngine } from './engine/draftEngine'
 import { aiPickPlayer, aiShouldReact } from './engine/aiSimulator'
-import { initDraft, makeDemoPlayers, makeDemoTeams } from './engine/initDraft'
+import SetupScreen from './setup/SetupScreen'
 import type { DraftState, Player } from './types'
 import './App.css'
 
-// ── Reducer ────────────────────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────
 
 const TOTAL_ROUNDS = 16
 
-const initialState: DraftState = initDraft({
-  mode: 'practice',
-  userTeamIndex: 0,
-  teams: makeDemoTeams(),
-  availablePool: makeDemoPlayers(),
-})
-
-// ── Component ──────────────────────────────────────────────────────────────
+// ── App (router) ───────────────────────────────────────────────────────────
 
 export default function App() {
+  const [draftState, setDraftState] = useState<DraftState | null>(null)
+
+  if (!draftState) {
+    return <SetupScreen onDraftStart={setDraftState} />
+  }
+
+  return <DraftView initialState={draftState} />
+}
+
+// ── DraftView ──────────────────────────────────────────────────────────────
+
+function DraftView({ initialState }: { initialState: DraftState }) {
   const [state, dispatch] = useReducer(
     (s: DraftState, a: Parameters<typeof draftEngine>[1]) => draftEngine(s, a),
     initialState,

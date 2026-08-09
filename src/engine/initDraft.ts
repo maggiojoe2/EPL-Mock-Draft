@@ -73,6 +73,7 @@ export function makeDemoTeams(): Team[] {
     previousYearRoster: [],
     saveHistory: new Set<string>(),
     franchisePlayer: null,
+    franchiseEligibleIds: new Set<string>(),
     saveUsedThisDraft: false,
     lastAvailableRound: 15,
   }))
