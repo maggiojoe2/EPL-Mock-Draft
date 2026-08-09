@@ -12,13 +12,10 @@ import type { RosterImport } from './csvParser'
  *
  * @param rosterImport  Result of parseRosterCsv — team name → roster rows
  * @param playerPool    Full player pool (IDs are authoritative)
- * @param localHistory  Optional: saveHistory loaded from localStorage,
- *                      keyed by team name — merged into each team's saveHistory
  */
 export function buildTeamsFromImport(
   rosterImport: RosterImport,
   playerPool: Player[],
-  localHistory?: Map<string, Set<string>>,
 ): Team[] {
   // Build a fast lookup: normalised name → Player
   const poolByName = new Map<string, Player>(
@@ -27,7 +24,7 @@ export function buildTeamsFromImport(
 
   return Array.from(rosterImport.entries()).map(([teamName, rows]) => {
     const previousYearRoster: Player[] = []
-    const saveHistory = new Set<string>(localHistory?.get(teamName) ?? [])
+    const saveHistory = new Set<string>()
     const franchiseEligibleIds = new Set<string>()
 
     for (const row of rows) {

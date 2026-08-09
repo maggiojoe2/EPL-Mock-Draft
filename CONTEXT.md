@@ -24,9 +24,9 @@
 
 **Save** — a one-per-draft action. When an opponent picks a player from your previous-year roster who has never been saved by your team before, you may block that pick and keep the player. The saved player fills your furthest-back open round (starting at round 15, then 14, 13, etc., since round 16 is reserved for the franchise player).
 
-**Saveable player** — a player on your previous-year roster who has never been saved by your team in any prior draft. Save history is tracked across sessions.
+**Saveable player** — a player on your previous-year roster who has never been saved by your team in any prior draft.
 
-**Save history** — the record of which players have ever been saved by a given team. A player saved once is no longer saveable by that team in future drafts.
+**Save history** — the record of which players have ever been saved by a given team. A player saved once is no longer saveable by that team in future drafts. Sourced exclusively from the roster CSV's `previously_saved` column — the app itself never persists a mock-draft save; when a real-league save happens, the user updates the CSV manually before the next import.
 
 **Pullback** — an unlimited reaction (one per eligible player picked). When an opponent picks any player from your previous-year roster, you may claim a *different* player from your previous-year roster instead. The original pick stands; the pulled-back player fills your furthest-back open round. A team may decline to pull back.
 

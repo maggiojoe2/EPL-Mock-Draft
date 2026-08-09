@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react'
 import { parsePlayerPoolCsv, parseRosterCsv } from './csvParser'
 import { buildTeamsFromImport, autoSelectFranchise } from './setupHelpers'
-import { loadSaveHistoryFromStorage } from './storage'
 import { initDraft } from '../engine/initDraft'
 import type { DraftState, Player, Team } from '../types'
 
@@ -68,8 +67,7 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
         setImportError('Roster CSV produced no valid teams. Check column names: team_name, player_name, franchise_eligible, previously_saved')
         return
       }
-      const localHistory = loadSaveHistoryFromStorage()
-      const newTeams = buildTeamsFromImport(rosterImport, playerPool, localHistory)
+      const newTeams = buildTeamsFromImport(rosterImport, playerPool)
       setTeams(newTeams)
       setUserTeamIndex(null)
       setImportError(null)

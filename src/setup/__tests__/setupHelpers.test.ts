@@ -59,17 +59,6 @@ describe('buildTeamsFromImport', () => {
     expect(team!.saveHistory.size).toBe(0)
   })
 
-  it('merges saveHistory from localStorage when available', () => {
-    const p = makePlayer('Justin Jefferson', 'WR', 6)
-    const pool: Player[] = [p]
-    const roster: RosterImport = new Map([
-      ['Alpha', [{ playerName: 'Justin Jefferson', franchiseEligible: false, previouslySaved: false }]],
-    ])
-    const localHistory = new Map([['Alpha', new Set([p.id])]])
-    const [team] = buildTeamsFromImport(roster, pool, localHistory)
-    expect(team!.saveHistory.has(p.id)).toBe(true)
-  })
-
   it('initialises lastAvailableRound to 15', () => {
     const pool: Player[] = [makePlayer('Patrick Mahomes', 'QB', 1)]
     const roster: RosterImport = new Map([['Team A', []]])

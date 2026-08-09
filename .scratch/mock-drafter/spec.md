@@ -42,7 +42,7 @@ A locally-run web app (React + Vite, opened in a browser) that simulates the EPL
 20. As a draft manager, I want the saved player to fill my furthest-back open round (starting at round 15, then 14, 13, etc.), so that the correct slot is reserved.
 21. As a draft manager, I want the app to enforce that I can only save once per draft, so that the rule is correctly applied.
 22. As a draft manager, I want the app to enforce that a player I have previously saved in a past draft cannot be saved again by my team, so that the lifetime save rule is respected.
-23. As a draft manager, I want save history to persist across sessions, so that past saves are still enforced in future practice drafts.
+23. As a draft manager, I want the real-league save history recorded in the roster CSV's `previously_saved` column to be enforced, so that players saved in actual past drafts cannot be saved again by the same team.
 24. As a draft manager, I want simulated teams to decide whether to save eligible players automatically, weighted by the player's ADP value, so that AI save behaviour feels realistic.
 
 ### Pullbacks
@@ -113,7 +113,7 @@ Parsing handled client-side (Papa Parse). No server required.
 
 ### Persistence
 
-Save history is persisted to `localStorage` keyed by team name. All other state is in-memory and lost on page reload (draft resume is out of scope for v1).
+Save history is sourced exclusively from the roster CSV's `previously_saved` column and is never written to `localStorage` by the app. When a real-league save happens, the user updates the CSV manually and re-imports it next session. Mock-draft saves are session-only: they enforce the one-save-per-draft limit (`saveUsedThisDraft`) within the running session but are forgotten when the session ends. All other state is in-memory and lost on page reload (draft resume is out of scope for v1).
 
 ### Tech stack
 
