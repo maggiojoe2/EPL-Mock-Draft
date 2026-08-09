@@ -82,6 +82,13 @@ function DraftView({ initialState }: { initialState: DraftState }) {
     !pendingPrompt &&
     currentPick.teamIndex === state.userTeamIndex
 
+  // Only show the reaction modal when it's the user's own team reacting.
+  // AI reactions are resolved silently by runAiStep.
+  const isUserReaction =
+    state.mode === 'practice' &&
+    pendingPrompt !== null &&
+    pendingPrompt.reactingTeamIndex === state.userTeamIndex
+
   return (
     <div className="app">
       <header className="app-header">
@@ -89,15 +96,15 @@ function DraftView({ initialState }: { initialState: DraftState }) {
         <span className="status-badge">
           {isDraftComplete
             ? '✅ Draft Complete'
-            : pendingPrompt
-              ? `⚡ Reaction — ${teams[pendingPrompt.reactingTeamIndex]!.name}`
+            : isUserReaction
+              ? `⚡ Reaction — ${teams[pendingPrompt!.reactingTeamIndex]!.name}`
               : isUserTurn
                 ? `🎯 Your pick — Round ${currentPick.round}`
                 : `⏳ Round ${currentPick.round} · ${teams[currentPick.teamIndex]!.name}`}
         </span>
       </header>
 
-      {pendingPrompt && (
+      {isUserReaction && (
         <ReactionModal
           prompt={pendingPrompt}
           teams={teams}
