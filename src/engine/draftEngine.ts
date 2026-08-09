@@ -1,6 +1,5 @@
 import type { Action, DraftState, PickRecord, Player, Team } from '../types'
 
-const TOTAL_TEAMS = 12
 const TOTAL_ROUNDS = 16
 
 // ── Pure helpers ───────────────────────────────────────────────────────────
@@ -19,8 +18,9 @@ function placeInRoster(team: Team, round: number, player: Player): Team {
 function nextPick(
   round: number,
   teamIndex: number,
+  totalTeams: number,
 ): { round: number; teamIndex: number } | null {
-  if (teamIndex < TOTAL_TEAMS - 1) {
+  if (teamIndex < totalTeams - 1) {
     return { round, teamIndex: teamIndex + 1 }
   }
   if (round < TOTAL_ROUNDS) {
@@ -131,13 +131,13 @@ function resolveReaction(
   const { head: pendingPrompt, tail: reactionQueue } = dequeue(state.reactionQueue)
 
   const { round, teamIndex } = state.currentPick
-  const next = pendingPrompt === null ? nextPick(round, teamIndex) : null
+  const next = pendingPrompt === null ? nextPick(round, teamIndex, teams.length) : null
 
   const totalFilled = totalPicksFilled(teams)
   const isDraftComplete =
     pendingPrompt === null &&
     reactionQueue.length === 0 &&
-    totalFilled === TOTAL_TEAMS * TOTAL_ROUNDS
+    totalFilled === teams.length * TOTAL_ROUNDS
 
   return {
     currentPick: next ?? state.currentPick,
@@ -184,9 +184,9 @@ export function draftEngine(state: DraftState, action: Action): DraftState {
 
       const totalFilled = totalPicksFilled(teams)
       const isDraftComplete =
-        reactionQueue.length === 0 && totalFilled === TOTAL_TEAMS * TOTAL_ROUNDS
+        reactionQueue.length === 0 && totalFilled === teams.length * TOTAL_ROUNDS
 
-      const next = reactionQueue.length === 0 ? nextPick(round, teamIndex) : null
+      const next = reactionQueue.length === 0 ? nextPick(round, teamIndex, teams.length) : null
 
       return {
         ...state,
