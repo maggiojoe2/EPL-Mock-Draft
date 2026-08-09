@@ -35,8 +35,8 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
   const [mode, setMode] = useState<'practice' | 'watch'>('practice')
   const [userTeamIndex, setUserTeamIndex] = useState<number | null>(null)
   const [expandedTeam, setExpandedTeam] = useState<number | null>(null)
-  const [poolSearch, setPoolSearch] = useState('')
-  const [addingToTeam, setAddingToTeam] = useState<number | null>(null)
+  /** Player search session: which team's panel is open + current query string. */
+  const [playerSearch, setPlayerSearch] = useState<{ teamIndex: number; query: string } | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
 
   // ── CSV import handlers ──────────────────────────────────────────────────
@@ -127,8 +127,7 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
       if (team.previousYearRoster.some(p => p.id === player.id)) return team
       return { ...team, previousYearRoster: [...team.previousYearRoster, player] }
     }))
-    setPoolSearch('')
-    setAddingToTeam(null)
+    setPlayerSearch(null)
   }, [])
 
   // ── Draft order reordering ───────────────────────────────────────────────
@@ -198,11 +197,11 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
   // ── Filtered pool for "add player" search ────────────────────────────────
 
   const filteredPool =
-    addingToTeam !== null && poolSearch.length >= 2
+    playerSearch !== null && playerSearch.query.length >= 2
       ? playerPool
           .filter(p =>
-            p.name.toLowerCase().includes(poolSearch.toLowerCase()) &&
-            !teams[addingToTeam]!.previousYearRoster.some(r => r.id === p.id),
+            p.name.toLowerCase().includes(playerSearch.query.toLowerCase()) &&
+            !teams[playerSearch.teamIndex]!.previousYearRoster.some(r => r.id === p.id),
           )
           .slice(0, 10)
       : []
@@ -210,6 +209,7 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
   // ── Render ────────────────────────────────────────────────────────────────
 
   const hasImport = playerPool.length > 0 && teams.length > 0
+  const franchiseStepVisible = mode === 'practice' && userTeamIndex !== null
 
   return (
     <div className="setup-screen">
@@ -309,7 +309,7 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
           </section>
 
           {/* ── Step 3: Franchise Player (practice + team selected) ── */}
-          {mode === 'practice' && userTeamIndex !== null && (
+          {franchiseStepVisible && (
             <section className="setup-section">
               <h2>3 · Franchise Player</h2>
               {userEligiblePlayers.length === 0 ? (
@@ -338,7 +338,7 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
 
           {/* ── Step 4: Draft Order ── */}
           <section className="setup-section">
-            <h2>{mode === 'practice' && userTeamIndex !== null ? '4' : '3'} · Draft Order</h2>
+            <h2>{franchiseStepVisible ? '4' : '3'} · Draft Order</h2>
             <p className="muted">Teams pick in this order every round (non-snake).</p>
             <ol className="draft-order-list">
               {teams.map((team, i) => (
@@ -375,7 +375,7 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
 
           {/* ── Step 5: Team Rosters (collapsible) ── */}
           <section className="setup-section">
-            <h2>{mode === 'practice' && userTeamIndex !== null ? '5' : '4'} · Team Rosters</h2>
+            <h2>{franchiseStepVisible ? '5' : '4'} · Team Rosters</h2>
             <p className="muted">Review and edit each team's previous-year roster before the draft.</p>
             <div className="roster-panels">
               {teams.map((team, ti) => (
@@ -437,17 +437,17 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
                       </table>
 
                       {/* Add player row */}
-                      {addingToTeam === ti ? (
+                      {playerSearch?.teamIndex === ti ? (
                         <div className="add-player-row">
                           <input
                             type="text"
                             className="add-player-input"
                             placeholder="Search player pool…"
-                            value={poolSearch}
-                            onChange={e => setPoolSearch(e.target.value)}
+                            value={playerSearch.query}
+                            onChange={e => setPlayerSearch({ teamIndex: ti, query: e.target.value })}
                             autoFocus
                           />
-                          <button className="btn-secondary" onClick={() => { setAddingToTeam(null); setPoolSearch('') }}>
+                          <button className="btn-secondary" onClick={() => setPlayerSearch(null)}>
                             Cancel
                           </button>
                           {filteredPool.length > 0 && (
@@ -468,7 +468,7 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
                       ) : (
                         <button
                           className="btn-secondary add-player-trigger"
-                          onClick={() => setAddingToTeam(ti)}
+                          onClick={() => setPlayerSearch({ teamIndex: ti, query: '' })}
                         >
                           + Add player from pool
                         </button>

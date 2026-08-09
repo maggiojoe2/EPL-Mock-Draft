@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — scaffold + draft engine skeleton.
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Pre-draft setup screen is the app's entry point (shown before the draft board)
 - [ ] Player pool CSV upload accepted; parsed columns: `name`, `position`, `nfl_team`, `adp`

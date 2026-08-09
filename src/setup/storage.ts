@@ -25,6 +25,7 @@ export function loadSaveHistoryFromStorage(): Map<string, Set<string>> {
 
 /**
  * Persist a team's save history to localStorage.
+ * Called after each save action during the draft (ticket 04).
  */
 export function saveSaveHistoryToStorage(teamName: string, saveHistory: Set<string>): void {
   const key = `${STORAGE_KEY_PREFIX}${teamName}`

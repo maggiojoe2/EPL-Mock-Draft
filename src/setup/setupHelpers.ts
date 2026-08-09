@@ -1,4 +1,5 @@
 import type { Player, Team } from '../types'
+import { ROSTER_SLOTS } from '../constants'
 import type { RosterImport } from './csvParser'
 
 // ── buildTeamsFromImport ───────────────────────────────────────────────────
@@ -40,7 +41,7 @@ export function buildTeamsFromImport(
 
     const team: Team = {
       name: teamName,
-      roster: Array.from({ length: 17 }, () => null),
+      roster: Array.from({ length: ROSTER_SLOTS }, () => null),
       previousYearRoster,
       saveHistory,
       franchisePlayer: null,
