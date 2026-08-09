@@ -4,7 +4,7 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] React + Vite + TypeScript project initialised, runs locally with `npm run dev`
 - [ ] Vitest (or equivalent) configured, `npm test` passes
