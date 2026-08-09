@@ -42,6 +42,10 @@ export type SavePrompt = {
   /** The team that may save (the owner of the previous-year player) */
   reactingTeamIndex: number
   player: Player
+  /** Other previous-year players still in the pool the team could pull back
+   *  instead of saving. A team with an unused save can save this player, pull
+   *  back one of these, or decline — empty when no pullback options remain. */
+  pullbackOptions: Player[]
 }
 
 export type PullbackPrompt = {

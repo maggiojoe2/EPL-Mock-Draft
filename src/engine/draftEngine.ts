@@ -75,37 +75,45 @@ function buildReactionQueue(
     const hasRoomForReaction =
       team.lastAvailableRound > state.currentPick.round
 
-    // Save check: player must be saveable and team hasn't used save this draft
-    const isSaveable =
-      !team.saveHistory.has(pickedPlayer.id) &&
-      !team.saveUsedThisDraft &&
-      hasRoomForReaction
+    if (!hasRoomForReaction) continue
+
+    // Save check: player must be saveable (never saved by this team in the
+    // real league, per saveHistory) and the team hasn't used its one save
+    // this draft yet.
+    const isSaveable = !team.saveHistory.has(pickedPlayer.id) && !team.saveUsedThisDraft
+
+    // Pullback options: any other previous-year player still in the pool.
+    // Sorted ascending by ADP so the AI's "highest-ADP" pick (opts[0]) and the
+    // practice-mode modal both present the best remaining option first.
+    const pullbackOptions = team.previousYearRoster
+      .filter(p => state.availablePool.some(ap => ap.id === p.id) && p.id !== pickedPlayer.id)
+      .sort((a, b) => a.adp - b.adp)
 
     if (isSaveable) {
+      // A team with an unused save can save the picked player, pull back a
+      // different previous-year player instead, or decline — all in one
+      // reaction. Only one team reacts per pick (the player's sole owner),
+      // so this is still a single queue entry.
       queue.push({
         kind: 'save',
         pickingTeamIndex,
         reactingTeamIndex: ti,
         player: pickedPlayer,
+        pullbackOptions,
       })
-      // Save and pullback are mutually exclusive per player-pick
       continue
     }
 
-    // Pullback check: any remaining previous-year player still in pool
-    if (hasRoomForReaction) {
-      const pullbackOptions = team.previousYearRoster.filter(
-        p => state.availablePool.some(ap => ap.id === p.id) && p.id !== pickedPlayer.id,
-      )
-      if (pullbackOptions.length > 0) {
-        queue.push({
-          kind: 'pullback',
-          pickingTeamIndex,
-          reactingTeamIndex: ti,
-          pickedPlayer,
-          pullbackOptions,
-        })
-      }
+    // Save isn't available (already used, or this player was previously
+    // saved) — offer pullback alone if any options remain.
+    if (pullbackOptions.length > 0) {
+      queue.push({
+        kind: 'pullback',
+        pickingTeamIndex,
+        reactingTeamIndex: ti,
+        pickedPlayer,
+        pullbackOptions,
+      })
     }
   }
 
@@ -258,7 +266,14 @@ export function draftEngine(state: DraftState, action: Action): DraftState {
     }
 
     case 'INVOKE_PULLBACK': {
-      if (!state.pendingPrompt || state.pendingPrompt.kind !== 'pullback') return state
+      // Reachable from either prompt kind: a plain pullback prompt, or a save
+      // prompt where the team is choosing to pull back instead of saving.
+      if (
+        !state.pendingPrompt ||
+        (state.pendingPrompt.kind !== 'pullback' && state.pendingPrompt.kind !== 'save')
+      ) {
+        return state
+      }
       const { reactingTeamIndex } = state.pendingPrompt
       const { pullbackPlayer } = action
 
@@ -314,6 +329,12 @@ export function draftEngine(state: DraftState, action: Action): DraftState {
         if (prompt.kind === 'save') {
           if (aiShouldReact(prompt.player.adp)) {
             return draftEngine(state, { type: 'INVOKE_SAVE', player: prompt.player })
+          }
+          // Save declined — fall back to pulling back the best remaining
+          // option before giving up entirely.
+          const saveOpts = prompt.pullbackOptions
+          if (saveOpts.length > 0 && aiShouldReact(saveOpts[0]!.adp)) {
+            return draftEngine(state, { type: 'INVOKE_PULLBACK', pullbackPlayer: saveOpts[0]! })
           }
           return draftEngine(state, { type: 'DECLINE_SAVE' })
         }

@@ -99,7 +99,7 @@ When a save or pullback fires, the player is placed in `team.roster[lastAvailabl
 
 ### Reaction check on every pick
 
-After each `PICK_PLAYER` action, the engine checks whether the picked player is on any team's previous-year roster. If so, and the team has a valid save or pullback available, the engine produces the appropriate `pendingPrompt`. In practice mode the prompt is presented to the user if it's their team; otherwise the AI decides. In watch mode the AI always decides.
+After each `PICK_PLAYER` action, the engine checks whether the picked player is on any team's previous-year roster. Only one team can own the picked player, so at most one team reacts per pick. If that team's save is unused and the player is saveable, the engine produces a `SavePrompt` carrying that team's `pullbackOptions` as well — the team may save the picked player, pull back a different previous-year player instead, or decline both. If save isn't available (already used this draft, or this player was previously saved), but the team has other previous-year players left in the pool, the engine produces a plain `PullbackPrompt` instead. In practice mode the prompt is presented to the user if it's their team; otherwise the AI decides. In watch mode the AI always decides.
 
 ### AI simulation
 

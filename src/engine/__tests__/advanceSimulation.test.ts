@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { draftEngine } from '../draftEngine'
 import { makeDraftState, makePlayer, makeTeam } from '../testHelpers'
 import type { DraftState, Player } from '../../types'
@@ -42,6 +42,7 @@ describe('ADVANCE_SIMULATION', () => {
         pickingTeamIndex: 1,
         reactingTeamIndex: 0, // user's team is reacting
         player,
+        pullbackOptions: [],
       },
       currentPick: { round: 1, teamIndex: 1 },
     })
@@ -93,6 +94,7 @@ describe('ADVANCE_SIMULATION', () => {
         pickingTeamIndex: 0,
         reactingTeamIndex: 1,
         player,
+        pullbackOptions: [],
       },
       currentPick: { round: 1, teamIndex: 0 },
     })
@@ -122,6 +124,7 @@ describe('ADVANCE_SIMULATION', () => {
         pickingTeamIndex: 1,
         reactingTeamIndex: 2, // AI team is reacting
         player,
+        pullbackOptions: [],
       },
       currentPick: { round: 1, teamIndex: 1 },
     })
@@ -158,6 +161,87 @@ describe('ADVANCE_SIMULATION', () => {
 
     const next = draftEngine(state, { type: 'ADVANCE_SIMULATION' })
     expect(next.pendingPrompt).toBeNull()
+  })
+
+  // ── AI save-or-pullback fallback ─────────────────────────────────────────
+
+  it('AI falls back to pulling back the best option when it declines the save', () => {
+    const player: Player = makePlayer(99) // high adp → low save-react probability
+    const pullbackOption: Player = makePlayer(0) // low adp → high pullback-react probability
+    const ownerTeam = makeTeam({
+      name: 'Owner',
+      previousYearRoster: [player, pullbackOption],
+      saveHistory: new Set(),
+      saveUsedThisDraft: false,
+      lastAvailableRound: 15,
+    })
+    const teams = Array.from({ length: 12 }, (_, i) =>
+      i === 1 ? ownerTeam : makeTeam({ name: `Team ${i}` }),
+    )
+    const state = makeDraftState({
+      mode: 'watch',
+      userTeamIndex: null,
+      teams,
+      pendingPrompt: {
+        kind: 'save',
+        pickingTeamIndex: 0,
+        reactingTeamIndex: 1,
+        player,
+        pullbackOptions: [pullbackOption],
+      },
+      currentPick: { round: 1, teamIndex: 0 },
+    })
+
+    // A single random() value that fails the save-react check (low prob, high
+    // adp) but passes the pullback-react check (high prob, low adp).
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+    try {
+      const next = draftEngine(state, { type: 'ADVANCE_SIMULATION' })
+      expect(next.teams[1]!.roster[15]).toEqual(pullbackOption)
+      expect(next.teams[1]!.saveUsedThisDraft).toBe(false)
+      expect(next.pendingPrompt).toBeNull()
+    } finally {
+      randomSpy.mockRestore()
+    }
+  })
+
+  it('AI declines entirely when neither the save nor the pullback clears the probability threshold', () => {
+    const player: Player = makePlayer(99)
+    const pullbackOption: Player = makePlayer(98) // also high adp → low probability
+    const ownerTeam = makeTeam({
+      name: 'Owner',
+      previousYearRoster: [player, pullbackOption],
+      saveHistory: new Set(),
+      saveUsedThisDraft: false,
+      lastAvailableRound: 15,
+    })
+    const teams = Array.from({ length: 12 }, (_, i) =>
+      i === 1 ? ownerTeam : makeTeam({ name: `Team ${i}` }),
+    )
+    const state = makeDraftState({
+      mode: 'watch',
+      userTeamIndex: null,
+      teams,
+      pendingPrompt: {
+        kind: 'save',
+        pickingTeamIndex: 0,
+        reactingTeamIndex: 1,
+        player,
+        pullbackOptions: [pullbackOption],
+      },
+      currentPick: { round: 1, teamIndex: 0 },
+    })
+
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+    try {
+      const next = draftEngine(state, { type: 'ADVANCE_SIMULATION' })
+      expect(next.teams[1]!.roster[15]).toBeNull()
+      expect(next.teams[1]!.saveUsedThisDraft).toBe(false)
+      expect(next.teams[1]!.lastAvailableRound).toBe(15)
+      expect(next.pendingPrompt).toBeNull()
+    } finally {
+      randomSpy.mockRestore()
+    }
   })
 })
 

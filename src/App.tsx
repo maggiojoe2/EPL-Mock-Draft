@@ -329,6 +329,22 @@ function ReactionModal({
             <button className="btn-primary" onClick={() => onInvokeSave(prompt.player)}>
               ✅ Save {prompt.player.name}
             </button>
+          </div>
+          {prompt.pullbackOptions.length > 0 && (
+            <>
+              <p>Or pull back a different previous-year player instead?</p>
+              <ul className="pullback-options">
+                {prompt.pullbackOptions.map(p => (
+                  <li key={p.id}>
+                    <button className="btn-primary" onClick={() => onInvokePullback(p)}>
+                      ↩️ Pull back {p.name} ({p.position})
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          <div className="modal-actions">
             <button className="btn-secondary" onClick={onDeclineSave}>
               ❌ Decline
             </button>
