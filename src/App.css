@@ -560,3 +560,101 @@ body { background: var(--bg); color: var(--text); }
   border-radius: 8px;
 }
 .start-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Summary screen ───────────────────────────────────────────────────── */
+.summary-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.summary-body {
+  flex: 1;
+  overflow: auto;
+  padding: 12px;
+}
+
+.summary-teams {
+  display: flex;
+  gap: 8px;
+  min-width: max-content;
+  align-items: flex-start;
+}
+
+.summary-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  min-width: 160px;
+  flex-shrink: 0;
+}
+
+.summary-card-header {
+  background: var(--border);
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: .3px;
+  text-align: center;
+}
+
+.summary-roster {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.summary-slot {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+  font-size: 11px;
+  min-height: 26px;
+}
+
+.summary-slot:last-child { border-bottom: none; }
+
+.summary-slot--franchise { background: color-mix(in srgb, var(--amber) 10%, transparent); }
+.summary-slot--save      { background: color-mix(in srgb, var(--green) 10%, transparent); }
+.summary-slot--pullback  { background: color-mix(in srgb, var(--sky)   10%, transparent); }
+
+.summary-round {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 600;
+  min-width: 16px;
+  text-align: right;
+}
+
+.summary-player {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  overflow: hidden;
+}
+
+.summary-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.summary-empty { color: var(--muted); font-size: 11px; }
+
+.summary-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.summary-badge--fp   { background: color-mix(in srgb, var(--amber) 30%, transparent); color: var(--amber); }
+.summary-badge--save { background: color-mix(in srgb, var(--green) 30%, transparent); color: var(--green); }
+.summary-badge--pb   { background: color-mix(in srgb, var(--sky)   30%, transparent); color: var(--sky); }

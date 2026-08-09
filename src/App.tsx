@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { draftEngine } from './engine/draftEngine'
 import SetupScreen from './setup/SetupScreen'
+import SummaryScreen from './SummaryScreen'
 import type { DraftState, PickRecord, Player } from './types'
 import './App.css'
 
@@ -27,6 +28,8 @@ function DraftView({ initialState }: { initialState: DraftState }) {
     (s: DraftState, a: Parameters<typeof draftEngine>[1]) => draftEngine(s, a),
     initialState,
   )
+  // When true, show the summary screen; flips automatically on completion.
+  const [showSummary, setShowSummary] = useState(false)
   const simulatingRef = useRef(false)
 
   const { teams, currentPick, availablePool, isDraftComplete, pendingPrompt, mode, userTeamIndex } = state
@@ -40,6 +43,11 @@ function DraftView({ initialState }: { initialState: DraftState }) {
     mode === 'practice' &&
     pendingPrompt !== null &&
     pendingPrompt.reactingTeamIndex === userTeamIndex
+
+  // Transition to summary screen when the draft finishes.
+  useEffect(() => {
+    if (isDraftComplete) setShowSummary(true)
+  }, [isDraftComplete])
 
   // Auto-advance AI turns via ADVANCE_SIMULATION (engine handles AI logic).
   useEffect(() => {
@@ -69,6 +77,15 @@ function DraftView({ initialState }: { initialState: DraftState }) {
     [teams, state.pickHistory],
   )
 
+  if (showSummary) {
+    return (
+      <SummaryScreen
+        state={state}
+        onBackToBoard={() => setShowSummary(false)}
+      />
+    )
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -82,6 +99,11 @@ function DraftView({ initialState }: { initialState: DraftState }) {
                 ? `🎯 Your pick — Round ${currentPick.round}`
                 : `⏳ Round ${currentPick.round} · ${teams[currentPick.teamIndex]!.name}`}
         </span>
+        {isDraftComplete && (
+          <button className="btn-primary" onClick={() => setShowSummary(true)}>
+            📊 View Summary
+          </button>
+        )}
       </header>
 
       {isUserReactionPending && (
