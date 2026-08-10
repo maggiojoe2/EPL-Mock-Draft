@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { draftEngine } from '../draftEngine'
 import { makeDraftState, makePlayer, makeTeam } from '../testHelpers'
-import type { DraftState, Player } from '../../types'
+import type { Player } from '../../types'
 
 // ── ADVANCE_SIMULATION ────────────────────────────────────────────────────────
 

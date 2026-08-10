@@ -9,7 +9,7 @@ function removeFromPool(pool: Player[], player: Player): Player[] {
   return pool.filter(p => p.id !== player.id)
 }
 
-function placeInRoster(team: Team, round: number, player: Player): Team {
+function placeInRoster(team: Team, round: number, player: Player | null): Team {
   const roster = [...team.roster]
   roster[round] = player
   return { ...team, roster }
