@@ -1,8 +1,12 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { parsePlayerPoolCsv, parseRosterCsv } from './csvParser'
 import { buildTeamsFromImport, autoSelectFranchise } from './setupHelpers'
 import { initDraft } from '../engine/initDraft'
 import type { DraftState, Player, Team } from '../types'
+
+// ── Default-data status ────────────────────────────────────────────────────
+
+type DefaultsStatus = 'loading' | 'loaded' | 'error' | 'overridden'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -37,6 +41,53 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
   /** Player search session: which team's panel is open + current query string. */
   const [playerSearch, setPlayerSearch] = useState<{ teamIndex: number; query: string } | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
+  const [defaultsStatus, setDefaultsStatus] = useState<DefaultsStatus>('loading')
+
+  // ── Load default data on mount ───────────────────────────────────────────
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadDefaults() {
+      try {
+        const [playersResp, rostersResp] = await Promise.all([
+          fetch('/defaults/players.csv'),
+          fetch('/defaults/rosters.csv'),
+        ])
+
+        if (!playersResp.ok || !rostersResp.ok) {
+          if (!cancelled) setDefaultsStatus('error')
+          return
+        }
+
+        const [playersText, rostersText] = await Promise.all([
+          playersResp.text(),
+          rostersResp.text(),
+        ])
+
+        const players = parsePlayerPoolCsv(playersText)
+        const rosterImport = parseRosterCsv(rostersText)
+
+        if (players.length === 0 || rosterImport.size === 0) {
+          if (!cancelled) setDefaultsStatus('error')
+          return
+        }
+
+        const defaultTeams = buildTeamsFromImport(rosterImport, players)
+
+        if (!cancelled) {
+          setPlayerPool(players)
+          setTeams(defaultTeams)
+          setDefaultsStatus('loaded')
+        }
+      } catch {
+        if (!cancelled) setDefaultsStatus('error')
+      }
+    }
+
+    void loadDefaults()
+    return () => { cancelled = true }
+  }, [])
 
   // ── CSV import handlers ──────────────────────────────────────────────────
 
@@ -52,6 +103,7 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
       }
       setPlayerPool(players)
       setImportError(null)
+      setDefaultsStatus('overridden')
     } catch {
       setImportError('Failed to read player pool file.')
     }
@@ -71,6 +123,7 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
       setTeams(newTeams)
       setUserTeamIndex(null)
       setImportError(null)
+      setDefaultsStatus('overridden')
     } catch {
       setImportError('Failed to read roster file.')
     }
@@ -215,6 +268,18 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
         <h1>EPL Mock Drafter</h1>
         <p className="setup-subtitle">Pre-Draft Setup</p>
       </header>
+
+      {/* ── Default data banners ── */}
+      {defaultsStatus === 'loaded' && (
+        <p className="defaults-banner">
+          ℹ️ Using default 2026 data — upload your own CSVs to override.
+        </p>
+      )}
+      {defaultsStatus === 'error' && (
+        <p className="defaults-error">
+          ⚠ Couldn&apos;t load default data. Please upload your own CSVs.
+        </p>
+      )}
 
       {/* ── Step 1: Import CSVs ── */}
       <section className="setup-section">

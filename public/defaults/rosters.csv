@@ -1,0 +1,193 @@
+team_name,player_name,franchise_eligible,previously_saved
+The Iron Throne,Patrick Mahomes,true,false
+The Iron Throne,Travis Kelce,true,true
+The Iron Throne,CeeDee Lamb,false,false
+The Iron Throne,Davante Adams,false,false
+The Iron Throne,Travis Etienne,true,false
+The Iron Throne,Dameon Pierce,false,false
+The Iron Throne,Elijah Moore,false,false
+The Iron Throne,KJ Hamler,false,false
+The Iron Throne,Demarcus Robinson,false,false
+The Iron Throne,Alex Erickson,false,false
+The Iron Throne,Jacques Patrick,false,false
+The Iron Throne,CJ Anderson,false,false
+The Iron Throne,Zach Charbonnet,false,false
+The Iron Throne,Cedric Tillman,false,false
+The Iron Throne,Matthew Wright,false,false
+The Iron Throne,SF DEF,false,false
+Gridiron Gods,Josh Allen,true,false
+Gridiron Gods,Stefon Diggs,false,false
+Gridiron Gods,Derrick Henry,true,false
+Gridiron Gods,Tyler Lockett,false,false
+Gridiron Gods,Kyle Pitts,true,false
+Gridiron Gods,Romeo Doubs,false,false
+Gridiron Gods,Ryan Tannehill,false,false
+Gridiron Gods,Will Dissly,false,false
+Gridiron Gods,Durham Smythe,false,false
+Gridiron Gods,Luke Farrell,false,false
+Gridiron Gods,Cody Thompson,false,false
+Gridiron Gods,Trenton Irwin,false,false
+Gridiron Gods,Jahmyr Gibbs,false,false
+Gridiron Gods,Elijah Dotson,false,false
+Gridiron Gods,Brandon McManus,false,false
+Gridiron Gods,DAL DEF,false,false
+Blitz Kings,Christian McCaffrey,true,false
+Blitz Kings,Mark Andrews,false,true
+Blitz Kings,Tee Higgins,false,false
+Blitz Kings,Aaron Jones,true,false
+Blitz Kings,Josh Jacobs,true,false
+Blitz Kings,Mike Gesicki,false,false
+Blitz Kings,AJ Dillon,false,false
+Blitz Kings,Jeff Wilson Jr.,false,false
+Blitz Kings,Mike Boone,false,false
+Blitz Kings,Cameron Scarlett,false,false
+Blitz Kings,Javelin Guidry,false,false
+Blitz Kings,Eric Saubert,false,false
+Blitz Kings,Tank Dell,false,false
+Blitz Kings,DeWayne McBride,false,false
+Blitz Kings,Jason Sanders,false,false
+Blitz Kings,BUF DEF,false,false
+Red Zone Raiders,Saquon Barkley,false,false
+Red Zone Raiders,Amari Cooper,true,false
+Red Zone Raiders,Joe Burrow,true,false
+Red Zone Raiders,Rachaad White,false,false
+Red Zone Raiders,David Njoku,false,false
+Red Zone Raiders,Rhamondre Stevenson,true,false
+Red Zone Raiders,Nelson Agholor,false,false
+Red Zone Raiders,Equanimeous St. Brown,false,false
+Red Zone Raiders,Ihmir Smith-Marsette,false,false
+Red Zone Raiders,Kalif Raymond,false,false
+Red Zone Raiders,River Cracraft,false,false
+Red Zone Raiders,Kenjon Barner,false,false
+Red Zone Raiders,Jordan Addison,false,false
+Red Zone Raiders,Lew Nichols,false,false
+Red Zone Raiders,Jake Elliott,false,false
+Red Zone Raiders,PHI DEF,false,false
+End Zone Elites,Tyreek Hill,true,false
+End Zone Elites,George Kittle,false,false
+End Zone Elites,Jaylen Waddle,false,false
+End Zone Elites,Najee Harris,true,false
+End Zone Elites,James Conner,true,false
+End Zone Elites,DeAndre Hopkins,false,false
+End Zone Elites,Jordan Akins,false,false
+End Zone Elites,Sam Darnold,false,false
+End Zone Elites,Dontrell Hilliard,false,false
+End Zone Elites,Benny Snell Jr.,false,false
+End Zone Elites,Ethan Wolf,false,false
+End Zone Elites,Nick Bellore,false,false
+End Zone Elites,Quentin Johnston,false,false
+End Zone Elites,Roschon Johnson,false,false
+End Zone Elites,Ka'imi Fairbairn,false,false
+End Zone Elites,NYJ DEF,false,false
+Hail Mary Heroes,Justin Jefferson,true,false
+Hail Mary Heroes,Nick Chubb,false,false
+Hail Mary Heroes,Cooper Kupp,false,false
+Hail Mary Heroes,Alvin Kamara,true,false
+Hail Mary Heroes,Diontae Johnson,true,false
+Hail Mary Heroes,Tyler Higbee,false,false
+Hail Mary Heroes,Laviska Shenault,false,false
+Hail Mary Heroes,Myles Gaskin,false,false
+Hail Mary Heroes,Keelan Cole,false,false
+Hail Mary Heroes,Anthony Schwartz,false,false
+Hail Mary Heroes,Deatrick Nichols,false,false
+Hail Mary Heroes,JJ Arcega-Whiteside,false,false
+Hail Mary Heroes,Michael Wilson,false,false
+Hail Mary Heroes,Kendre Miller,false,false
+Hail Mary Heroes,Matt Gay,false,false
+Hail Mary Heroes,MIA DEF,false,false
+First Down Fury,Breece Hall,false,false
+First Down Fury,A.J. Brown,true,false
+First Down Fury,DK Metcalf,false,false
+First Down Fury,Courtland Sutton,false,false
+First Down Fury,Drake London,true,false
+First Down Fury,Antonio Gibson,false,false
+First Down Fury,Boston Scott,false,false
+First Down Fury,Parris Campbell,false,false
+First Down Fury,Trey Sermon,false,false
+First Down Fury,Justin Jackson,false,false
+First Down Fury,James O'Shaughnessy,false,false
+First Down Fury,Pharaoh Cooper,false,false
+First Down Fury,Luke Musgrave,false,false
+First Down Fury,Sean Tucker,false,false
+First Down Fury,Tyler Bass,false,false
+First Down Fury,BAL DEF,false,false
+Turf Titans,Jalen Hurts,true,false
+Turf Titans,T.J. Hockenson,false,false
+Turf Titans,DeVonta Smith,false,false
+Turf Titans,D'Andre Swift,false,false
+Turf Titans,Dawson Knox,true,false
+Turf Titans,Cole Kmet,false,false
+Turf Titans,Marquez Valdes-Scantling,false,false
+Turf Titans,Geno Smith,false,false
+Turf Titans,Josh Reynolds,false,false
+Turf Titans,Freddie Swain,false,false
+Turf Titans,Greg Ward,false,false
+Turf Titans,Patrick Scales,false,false
+Turf Titans,Evan Hull,false,false
+Turf Titans,Chase Brown,false,false
+Turf Titans,Younghoe Koo,false,false
+Turf Titans,KC DEF,false,false
+Fantasy Fury,Lamar Jackson,true,false
+Fantasy Fury,Austin Ekeler,false,false
+Fantasy Fury,Chris Olave,false,false
+Fantasy Fury,Miles Sanders,true,false
+Fantasy Fury,Kirk Cousins,false,false
+Fantasy Fury,Cam Akers,false,false
+Fantasy Fury,Kyren Williams,false,false
+Fantasy Fury,Giovani Bernard,false,false
+Fantasy Fury,Jacob Hollister,false,false
+Fantasy Fury,Senorise Perry,false,false
+Fantasy Fury,Isaiah McKenzie,false,false
+Fantasy Fury,Jeff Cotton Jr.,false,false
+Fantasy Fury,Hassan Haskins,false,false
+Fantasy Fury,Israel Abanikanda,false,false
+Fantasy Fury,Harrison Butker,false,false
+Fantasy Fury,CLE DEF,false,false
+Touchdown Tacticians,Tua Tagovailoa,true,false
+Touchdown Tacticians,Tony Pollard,false,false
+Touchdown Tacticians,Amon-Ra St. Brown,false,false
+Touchdown Tacticians,Joe Mixon,true,false
+Touchdown Tacticians,Pat Freiermuth,false,false
+Touchdown Tacticians,Adam Thielen,false,false
+Touchdown Tacticians,Darius Slayton,false,false
+Touchdown Tacticians,Tyler Conklin,false,false
+Touchdown Tacticians,Larry Rountree,false,false
+Touchdown Tacticians,Ventell Bryant,false,false
+Touchdown Tacticians,Tommy Sweeney,false,false
+Touchdown Tacticians,Puka Nacua,false,false
+Touchdown Tacticians,Parker Washington,false,false
+Touchdown Tacticians,Eric Gray,false,false
+Touchdown Tacticians,Justin Tucker,false,false
+Touchdown Tacticians,NE DEF,false,false
+Grid Iron Giants,Dak Prescott,true,false
+Grid Iron Giants,Garrett Wilson,false,false
+Grid Iron Giants,Brandon Aiyuk,false,false
+Grid Iron Giants,Gus Edwards,true,false
+Grid Iron Giants,Christian Kirk,true,false
+Grid Iron Giants,Logan Thomas,false,false
+Grid Iron Giants,Marcus Mariota,false,false
+Grid Iron Giants,Braxton Berrios,false,false
+Grid Iron Giants,Jody Fortson,false,false
+Grid Iron Giants,Tommy Tremble,false,false
+Grid Iron Giants,Devonta Freeman,false,false
+Grid Iron Giants,Rashee Rice,false,false
+Grid Iron Giants,Dontayvion Wicks,false,false
+Grid Iron Giants,Ty Chandler,false,false
+Grid Iron Giants,Evan McPherson,false,false
+Grid Iron Giants,LAR DEF,false,false
+Blitz Brigade,Derek Carr,false,false
+Blitz Brigade,Mecole Hardman,false,false
+Blitz Brigade,David Montgomery,true,false
+Blitz Brigade,Kareem Hunt,false,false
+Blitz Brigade,Trevor Lawrence,true,false
+Blitz Brigade,Matthew Stafford,false,false
+Blitz Brigade,Kenyan Drake,false,false
+Blitz Brigade,Corey Clement,false,false
+Blitz Brigade,CJ Verdell,false,false
+Blitz Brigade,Malcolm Brown,false,false
+Blitz Brigade,Jakeem Grant,false,false
+Blitz Brigade,Sam LaPorta,false,false
+Blitz Brigade,Charlie Jones,false,false
+Blitz Brigade,Chris Rodriguez Jr.,false,false
+Blitz Brigade,Greg Zuerlein,false,false
+Blitz Brigade,MIN DEF,false,false
