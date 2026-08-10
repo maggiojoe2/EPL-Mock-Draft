@@ -51,8 +51,8 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
     async function loadDefaults() {
       try {
         const [playersResp, rostersResp] = await Promise.all([
-          fetch('/defaults/players.csv'),
-          fetch('/defaults/rosters.csv'),
+          fetch(`${import.meta.env.BASE_URL}defaults/players.csv`),
+          fetch(`${import.meta.env.BASE_URL}defaults/rosters.csv`),
         ])
 
         if (!playersResp.ok || !rostersResp.ok) {
