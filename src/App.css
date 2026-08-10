@@ -281,19 +281,19 @@ body { background: var(--bg); color: var(--text); }
 .pullback-options .btn-primary { width: 100%; justify-content: flex-start; text-align: left; }
 
 /* ── Default data banners ─────────────────────────────────────────────── */
-.defaults-banner {
+.defaults-notice {
   font-size: 12px;
   padding: 8px 12px;
   border-radius: 6px;
+}
+
+.defaults-notice--info {
   background: color-mix(in srgb, var(--sky) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--sky) 30%, transparent);
   color: var(--sky);
 }
 
-.defaults-error {
-  font-size: 12px;
-  padding: 8px 12px;
-  border-radius: 6px;
+.defaults-notice--error {
   background: color-mix(in srgb, var(--amber) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--amber) 30%, transparent);
   color: var(--amber);

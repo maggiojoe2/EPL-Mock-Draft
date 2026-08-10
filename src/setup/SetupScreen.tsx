@@ -68,7 +68,8 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
         const players = parsePlayerPoolCsv(playersText)
         const rosterImport = parseRosterCsv(rostersText)
 
-        if (players.length === 0 || rosterImport.size === 0) {
+        const totalRosterPlayers = [...rosterImport.values()].reduce((n, rows) => n + rows.length, 0)
+        if (players.length === 0 || totalRosterPlayers === 0) {
           if (!cancelled) setDefaultsStatus('error')
           return
         }
@@ -271,12 +272,12 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
 
       {/* ── Default data banners ── */}
       {defaultsStatus === 'loaded' && (
-        <p className="defaults-banner">
+        <p className="defaults-notice defaults-notice--info">
           ℹ️ Using default 2026 data — upload your own CSVs to override.
         </p>
       )}
       {defaultsStatus === 'error' && (
-        <p className="defaults-error">
+        <p className="defaults-notice defaults-notice--error">
           ⚠ Couldn&apos;t load default data. Please upload your own CSVs.
         </p>
       )}
