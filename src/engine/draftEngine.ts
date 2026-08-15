@@ -1,5 +1,5 @@
 import type { Action, DraftState, PickRecord, Player, Team } from '../types'
-import { aiPickPlayer, aiShouldReact } from './aiSimulator'
+import { aiPickPlayer, aiShouldReact, computeSaveTargetWithMistake } from './aiSimulator'
 
 const TOTAL_ROUNDS = 16
 
@@ -344,7 +344,12 @@ export function draftEngine(state: DraftState, action: Action): DraftState {
         // Resolve an AI team's reaction.
         const prompt = state.pendingPrompt
         if (prompt.kind === 'save') {
-          if (aiShouldReact(prompt.player.adp)) {
+          // Recomputed fresh (not cached) so it reflects the team's current
+          // franchisePlayer and saveHistory rather than a value fixed at
+          // draft start.
+          const reactingTeam = state.teams[prompt.reactingTeamIndex]!
+          const saveTarget = computeSaveTargetWithMistake(reactingTeam, reactingTeam.franchisePlayer)
+          if (saveTarget && saveTarget.id === prompt.player.id) {
             return draftEngine(state, { type: 'INVOKE_SAVE', player: prompt.player })
           }
           // Save declined — fall back to pulling back the best remaining

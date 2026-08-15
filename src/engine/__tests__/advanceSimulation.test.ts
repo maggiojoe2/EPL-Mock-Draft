@@ -163,54 +163,109 @@ describe('ADVANCE_SIMULATION', () => {
     expect(next.pendingPrompt).toBeNull()
   })
 
-  // ── AI save-or-pullback fallback ─────────────────────────────────────────
+  // ── AI save decision: target-match, not probability ──────────────────────
+  //
+  // The save branch no longer runs an ADP-probability check (aiShouldReact);
+  // it invokes the save iff the picked player matches the team's current
+  // save target (via computeSaveTargetWithMistake). Only the *fallback* to
+  // pullback, once a save is declined, still uses aiShouldReact — that's
+  // ticket 03's territory.
 
-  it('AI falls back to pulling back the best option when it declines the save', () => {
-    const player: Player = makePlayer(99) // high adp → low save-react probability
-    const pullbackOption: Player = makePlayer(0) // low adp → high pullback-react probability
-    const ownerTeam = makeTeam({
-      name: 'Owner',
-      previousYearRoster: [player, pullbackOption],
-      saveHistory: new Set(),
-      saveUsedThisDraft: false,
-      lastAvailableRound: 15,
-    })
-    const teams = Array.from({ length: 12 }, (_, i) =>
-      i === 1 ? ownerTeam : makeTeam({ name: `Team ${i}` }),
-    )
-    const state = makeDraftState({
-      mode: 'watch',
-      userTeamIndex: null,
-      teams,
-      pendingPrompt: {
-        kind: 'save',
-        pickingTeamIndex: 0,
-        reactingTeamIndex: 1,
-        player,
-        pullbackOptions: [pullbackOption],
-      },
-      currentPick: { round: 1, teamIndex: 0 },
-    })
-
-    // A single random() value that fails the save-react check (low prob, high
-    // adp) but passes the pullback-react check (high prob, low adp).
-    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+  /** Runs `fn` with Math.random pinned above the mistake-noise threshold, so
+   *  the save target is the algorithm's undisturbed top choice. */
+  function withoutMistakes<T>(fn: () => T): T {
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.99)
     try {
-      const next = draftEngine(state, { type: 'ADVANCE_SIMULATION' })
-      expect(next.teams[1]!.roster[15]).toEqual(pullbackOption)
-      expect(next.teams[1]!.saveUsedThisDraft).toBe(false)
-      expect(next.pendingPrompt).toBeNull()
+      return fn()
     } finally {
       randomSpy.mockRestore()
     }
-  })
+  }
 
-  it('AI declines entirely when neither the save nor the pullback clears the probability threshold', () => {
-    const player: Player = makePlayer(99)
-    const pullbackOption: Player = makePlayer(98) // also high adp → low probability
+  it('invokes the save automatically when the picked player matches the current save target', () => {
+    const target: Player = makePlayer(0) // best ADP on the roster
+    const other: Player = makePlayer(50)
     const ownerTeam = makeTeam({
       name: 'Owner',
-      previousYearRoster: [player, pullbackOption],
+      previousYearRoster: [other, target],
+      saveHistory: new Set(),
+      saveUsedThisDraft: false,
+      lastAvailableRound: 15,
+    })
+    const teams = Array.from({ length: 12 }, (_, i) =>
+      i === 1 ? ownerTeam : makeTeam({ name: `Team ${i}` }),
+    )
+    const state = makeDraftState({
+      mode: 'watch',
+      userTeamIndex: null,
+      teams,
+      pendingPrompt: {
+        kind: 'save',
+        pickingTeamIndex: 0,
+        reactingTeamIndex: 1,
+        player: target,
+        pullbackOptions: [],
+      },
+      currentPick: { round: 1, teamIndex: 0 },
+    })
+
+    const next = withoutMistakes(() => draftEngine(state, { type: 'ADVANCE_SIMULATION' }))
+    expect(next.teams[1]!.roster[15]).toEqual(target)
+    expect(next.teams[1]!.saveUsedThisDraft).toBe(true)
+    expect(next.pendingPrompt).toBeNull()
+  })
+
+  it('AI falls back to pulling back the best option when the picked player is not the save target', () => {
+    const trueTarget: Player = makePlayer(0) // best ADP → the real save target
+    const player: Player = makePlayer(99) // the (worse) player actually picked
+    const ownerTeam = makeTeam({
+      name: 'Owner',
+      previousYearRoster: [player, trueTarget],
+      saveHistory: new Set(),
+      saveUsedThisDraft: false,
+      lastAvailableRound: 15,
+    })
+    const teams = Array.from({ length: 12 }, (_, i) =>
+      i === 1 ? ownerTeam : makeTeam({ name: `Team ${i}` }),
+    )
+    const state = makeDraftState({
+      mode: 'watch',
+      userTeamIndex: null,
+      teams,
+      pendingPrompt: {
+        kind: 'save',
+        pickingTeamIndex: 0,
+        reactingTeamIndex: 1,
+        player,
+        pullbackOptions: [trueTarget],
+      },
+      currentPick: { round: 1, teamIndex: 0 },
+    })
+
+    // The save target (trueTarget) doesn't match the picked player, so the
+    // save is declined; the fallback to pullback still runs its own
+    // aiShouldReact check (low adp on trueTarget → high pullback probability).
+    // 0.5 clears that probability check while staying above the mistake
+    // threshold, so the save-target computation itself is undisturbed.
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+    let next
+    try {
+      next = draftEngine(state, { type: 'ADVANCE_SIMULATION' })
+    } finally {
+      randomSpy.mockRestore()
+    }
+    expect(next.teams[1]!.roster[15]).toEqual(trueTarget)
+    expect(next.teams[1]!.saveUsedThisDraft).toBe(false)
+    expect(next.pendingPrompt).toBeNull()
+  })
+
+  it('AI declines entirely when the picked player is not the save target and the pullback fallback also declines', () => {
+    const trueTarget: Player = makePlayer(0)
+    const player: Player = makePlayer(99)
+    const pullbackOption: Player = makePlayer(98) // high adp → low pullback-react probability
+    const ownerTeam = makeTeam({
+      name: 'Owner',
+      previousYearRoster: [player, trueTarget],
       saveHistory: new Set(),
       saveUsedThisDraft: false,
       lastAvailableRound: 15,
@@ -232,7 +287,7 @@ describe('ADVANCE_SIMULATION', () => {
       currentPick: { round: 1, teamIndex: 0 },
     })
 
-    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.99)
     try {
       const next = draftEngine(state, { type: 'ADVANCE_SIMULATION' })
       expect(next.teams[1]!.roster[15]).toBeNull()
@@ -242,6 +297,103 @@ describe('ADVANCE_SIMULATION', () => {
     } finally {
       randomSpy.mockRestore()
     }
+  })
+
+  it('mistake noise substitutes the next-best saveable candidate as the effective save target', () => {
+    const best: Player = makePlayer(0) // best ADP — the algorithm's undisturbed top choice
+    const nextBest: Player = makePlayer(1) // second-best — the mistake substitute, and what's picked
+    const ownerTeam = makeTeam({
+      name: 'Owner',
+      previousYearRoster: [best, nextBest],
+      saveHistory: new Set(),
+      saveUsedThisDraft: false,
+      lastAvailableRound: 15,
+    })
+    const teams = Array.from({ length: 12 }, (_, i) =>
+      i === 1 ? ownerTeam : makeTeam({ name: `Team ${i}` }),
+    )
+    const state = makeDraftState({
+      mode: 'watch',
+      userTeamIndex: null,
+      teams,
+      pendingPrompt: {
+        kind: 'save',
+        pickingTeamIndex: 0,
+        reactingTeamIndex: 1,
+        player: nextBest,
+        pullbackOptions: [],
+      },
+      currentPick: { round: 1, teamIndex: 0 },
+    })
+
+    // Force the mistake draw so the effective target becomes nextBest
+    // instead of best — the picked player (nextBest) then matches and the
+    // save fires, which would not happen on an undisturbed decision.
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
+    try {
+      const next = draftEngine(state, { type: 'ADVANCE_SIMULATION' })
+      expect(next.teams[1]!.roster[15]).toEqual(nextBest)
+      expect(next.teams[1]!.saveUsedThisDraft).toBe(true)
+    } finally {
+      randomSpy.mockRestore()
+    }
+  })
+
+  it('recomputes the save target fresh rather than reusing a value fixed before the draft', () => {
+    const target: Player = makePlayer(0) // best ADP on the roster
+    const other: Player = makePlayer(50)
+    const basePrompt = {
+      kind: 'save' as const,
+      pickingTeamIndex: 0,
+      reactingTeamIndex: 1,
+      player: target,
+      pullbackOptions: [],
+    }
+
+    // Before: target has not yet been secured elsewhere — the save fires.
+    const freshTeam = makeTeam({
+      name: 'Owner',
+      previousYearRoster: [other, target],
+      saveHistory: new Set(),
+      franchisePlayer: null,
+      saveUsedThisDraft: false,
+      lastAvailableRound: 15,
+    })
+    const before = withoutMistakes(() =>
+      draftEngine(
+        makeDraftState({
+          mode: 'watch',
+          userTeamIndex: null,
+          teams: Array.from({ length: 12 }, (_, i) =>
+            i === 1 ? freshTeam : makeTeam({ name: `Team ${i}` }),
+          ),
+          pendingPrompt: basePrompt,
+          currentPick: { round: 1, teamIndex: 0 },
+        }),
+        { type: 'ADVANCE_SIMULATION' },
+      ),
+    )
+    expect(before.teams[1]!.roster[15]).toEqual(target)
+
+    // After: the team's franchisePlayer is now `target` — it's already
+    // secured, so a fresh computeSaveTarget call excludes it and the same
+    // picked player (target) no longer matches the (recomputed) target.
+    const securedTeam = { ...freshTeam, franchisePlayer: target }
+    const after = withoutMistakes(() =>
+      draftEngine(
+        makeDraftState({
+          mode: 'watch',
+          userTeamIndex: null,
+          teams: Array.from({ length: 12 }, (_, i) =>
+            i === 1 ? securedTeam : makeTeam({ name: `Team ${i}` }),
+          ),
+          pendingPrompt: basePrompt,
+          currentPick: { round: 1, teamIndex: 0 },
+        }),
+        { type: 'ADVANCE_SIMULATION' },
+      ),
+    )
+    expect(after.teams[1]!.roster[15]).toBeNull()
   })
 })
 

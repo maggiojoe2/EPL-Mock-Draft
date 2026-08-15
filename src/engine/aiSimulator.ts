@@ -95,6 +95,15 @@ export function computeFranchiseTarget(team: FranchiseTeam): Player | null {
 
 type SaveTeam = Pick<Team, 'previousYearRoster' | 'saveHistory'>
 
+/** Save-eligible candidates (excluding the franchise target and anyone
+ *  already in save history), sorted ascending by ADP — best first. */
+function saveCandidates(team: SaveTeam, franchiseTarget: Player | null): Player[] {
+  return team.previousYearRoster
+    .filter(p => p.id !== franchiseTarget?.id && !team.saveHistory.has(p.id))
+    .slice()
+    .sort((a, b) => a.adp - b.adp)
+}
+
 /**
  * Computes a team's current save target: the best-ADP player on its
  * previous-year roster, excluding the given franchise target, that isn't
@@ -112,8 +121,21 @@ export function computeSaveTarget(
   team: SaveTeam,
   franchiseTarget: Player | null,
 ): Player | null {
-  const candidates = team.previousYearRoster.filter(
-    p => p.id !== franchiseTarget?.id && !team.saveHistory.has(p.id),
-  )
-  return bestByAdp(candidates)
+  return saveCandidates(team, franchiseTarget)[0] ?? null
+}
+
+/**
+ * Computes a team's current save target with mistake noise applied: on a
+ * mistake draw, the next-best saveable candidate (by ADP) stands in for the
+ * algorithm's top choice for this one decision. Used at the point a save
+ * decision is actually made, so it never gets baked into `computeSaveTarget`
+ * itself (which stays deterministic for callers like the swap computation).
+ */
+export function computeSaveTargetWithMistake(
+  team: SaveTeam,
+  franchiseTarget: Player | null,
+): Player | null {
+  const candidates = saveCandidates(team, franchiseTarget)
+  if (candidates.length === 0) return null
+  return isMistake() ? (candidates[1] ?? candidates[0]!) : candidates[0]!
 }

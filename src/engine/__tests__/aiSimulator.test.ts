@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { computeFranchiseTarget, computeSaveTarget } from '../aiSimulator'
+import { computeFranchiseTarget, computeSaveTarget, computeSaveTargetWithMistake } from '../aiSimulator'
 import type { Player } from '../../types'
 
 // ── Fixtures ───────────────────────────────────────────────────────────────
@@ -242,5 +242,65 @@ describe('computeSaveTarget', () => {
       franchise,
     )
     expect(after!.id).toBe(nextTarget.id)
+  })
+})
+
+// ── computeSaveTargetWithMistake ────────────────────────────────────────────
+
+describe('computeSaveTargetWithMistake', () => {
+  it('matches computeSaveTarget on an undisturbed decision', () => {
+    const franchise = makePlayer('Franchise', 1)
+    const best = makePlayer('Best Remaining', 2)
+    const worse = makePlayer('Worse Remaining', 5)
+    const target = withoutMistakes(() =>
+      computeSaveTargetWithMistake(
+        { previousYearRoster: [franchise, worse, best], saveHistory: new Set() },
+        franchise,
+      ),
+    )
+    expect(target!.id).toBe(best.id)
+  })
+
+  it('substitutes the next-best saveable candidate on a mistake draw', () => {
+    const best = makePlayer('Best', 1)
+    const nextBest = makePlayer('Next Best', 2)
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
+    try {
+      const target = computeSaveTargetWithMistake(
+        { previousYearRoster: [best, nextBest], saveHistory: new Set() },
+        null,
+      )
+      expect(target!.id).toBe(nextBest.id)
+    } finally {
+      randomSpy.mockRestore()
+    }
+  })
+
+  it('falls back to the sole candidate on a mistake draw when no next-best exists', () => {
+    const only = makePlayer('Only', 1)
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
+    try {
+      const target = computeSaveTargetWithMistake(
+        { previousYearRoster: [only], saveHistory: new Set() },
+        null,
+      )
+      expect(target!.id).toBe(only.id)
+    } finally {
+      randomSpy.mockRestore()
+    }
+  })
+
+  it('returns null when there is no candidate at all, mistake or not', () => {
+    const franchise = makePlayer('Franchise', 1)
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
+    try {
+      const target = computeSaveTargetWithMistake(
+        { previousYearRoster: [franchise], saveHistory: new Set() },
+        franchise,
+      )
+      expect(target).toBeNull()
+    } finally {
+      randomSpy.mockRestore()
+    }
   })
 })
