@@ -136,6 +136,26 @@ React + Vite, runs locally in the browser via `npm run dev`. No backend. No auth
 
 **Prior art:** None — greenfield. Establish the pattern in the first ticket.
 
+## Default Data (issue-08, issue-09)
+
+The app ships with bundled default data so it works immediately without any uploads.
+
+### Data files
+Two static CSV files committed to the repo at:
+- `/public/defaults/players.csv` — 2026 season player pool (`name, position, nfl_team, adp`)
+- `/public/defaults/rosters.csv` — 2026 league rosters (`team_name, player_name, franchise_eligible, previously_saved`)
+
+### Startup behaviour
+On mount, `SetupScreen` fetches both files in parallel via `fetch()`. On success, the parsed results populate `playerPool` and `teams` state exactly as if the user had uploaded them. A dismissal banner appears: *"Using default 2026 data — upload your own CSVs to override."*
+
+On fetch failure, a clear error is shown: *"Couldn't load default data. Please upload your own CSVs."* No banner appears; upload inputs are available as before.
+
+### Override behaviour
+The upload inputs remain visible at all times. When the user uploads a player pool CSV, it replaces the default player pool and the banner disappears. When they upload a roster CSV, it replaces the default rosters and the banner disappears. The banner tracks whether **both** defaults are still active; it vanishes as soon as either is overridden (since roster depends on player pool, overriding either one resets the pair).
+
+### Data sourcing
+The real 2026 league data was sourced from user spreadsheets and converted to the required CSV schema. The test-data directory (`test-data/`) is left unchanged for use in tests.
+
 ## Out of Scope
 
 - Draft resume / save-and-continue across sessions
