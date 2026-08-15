@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { TOTAL_ROUNDS } from "./constants";
 import { draftEngine } from "./engine/draftEngine";
+import { buildSlotTypeMap, slotKey } from "./rosterSlotType";
 import SetupScreen from "./setup/SetupScreen";
 import SummaryScreen from "./SummaryScreen";
 import type { DraftState, PickRecord, Player } from "./types";
 import "./App.css";
-
-// ── Constants ─────────────────────────────────────────────────────────────
-
-const TOTAL_ROUNDS = 16;
 
 // ── App (router) ───────────────────────────────────────────────────────────
 
@@ -95,7 +93,7 @@ function DraftView({ initialState }: { initialState: DraftState }) {
 
   // Build a map of cell types from pickHistory + franchise pre-fills.
   const cellTypeMap = useMemo(
-    () => buildCellTypeMap(teams, state.pickHistory),
+    () => buildSlotTypeMap(teams, state.pickHistory),
     [teams, state.pickHistory],
   );
 
@@ -167,44 +165,6 @@ function DraftView({ initialState }: { initialState: DraftState }) {
       </div>
     </div>
   );
-}
-
-// ── buildCellTypeMap ───────────────────────────────────────────────────────
-
-/** Encode a board cell as a map key. One place to change if the schema changes. */
-function cellKey(teamIndex: number, round: number): string {
-  return `${teamIndex}-${round}`;
-}
-
-/** Return a map of `cellKey(ti, round)` → pickType for all filled cells. */
-function buildCellTypeMap(
-  teams: DraftState["teams"],
-  pickHistory: PickRecord[],
-): Map<string, PickRecord["pickType"]> {
-  const map = new Map<string, PickRecord["pickType"]>();
-
-  // Normal / save / pullback picks are in history.
-  for (const record of pickHistory) {
-    map.set(cellKey(record.teamIndex, record.round), record.pickType);
-  }
-
-  // Franchise pre-fills are placed by initDraft (not through PICK_PLAYER) so
-  // they have no history entry — detect them from the team's franchisePlayer.
-  // Note: if a future change records franchise placement in pickHistory, the
-  // `!map.has` guard prevents this fallback from overwriting that entry.
-  const franchiseRound = TOTAL_ROUNDS;
-  for (let ti = 0; ti < teams.length; ti++) {
-    const team = teams[ti];
-    if (
-      team.franchisePlayer &&
-      team.roster[franchiseRound]?.id === team.franchisePlayer.id
-    ) {
-      const key = cellKey(ti, franchiseRound);
-      if (!map.has(key)) map.set(key, "franchise");
-    }
-  }
-
-  return map;
 }
 
 // ── Cell-type config ───────────────────────────────────────────────────────
@@ -283,7 +243,7 @@ function DraftBoard({
                   const player = team.roster[round];
                   const isActive =
                     isActiveRound && currentPick.teamIndex === ti;
-                  const cellType = cellTypeMap.get(cellKey(ti, round));
+                  const cellType = cellTypeMap.get(slotKey(ti, round));
                   const typeConfig = cellType
                     ? CELL_TYPE_CONFIG[cellType]
                     : undefined;

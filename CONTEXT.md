@@ -41,3 +41,5 @@
 **Simulated team** — an AI-controlled fantasy team that selects players by ADP with randomness, and makes save/pullback decisions based on player value.
 
 **Roster** — a team's complete set of 16 drafted players: 9 starters (1 QB, 2 RB, 2 WR, 1 TE, 1 FLEX, 1 K, 1 DEF/ST) and 7 bench spots.
+
+**Slot** — a single (team, round) position in a roster; identified by a `slotKey`. Filled by a normal pick, save, pullback, or franchise pre-fill (its `slot_type`).

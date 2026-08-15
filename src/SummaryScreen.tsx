@@ -1,12 +1,8 @@
 import type React from "react";
 import { TOTAL_ROUNDS } from "./constants";
 import type { DraftState, PickRecord } from "./types";
-import {
-  buildCsvRows,
-  buildSlotTypeMap,
-  slotKey,
-  toCsvString,
-} from "./export/exportRosters";
+import { buildCsvRows, toCsvString } from "./export/exportRosters";
+import { buildSlotTypeMap, slotKey } from "./rosterSlotType";
 
 // ── Slot label config ──────────────────────────────────────────────────────
 
