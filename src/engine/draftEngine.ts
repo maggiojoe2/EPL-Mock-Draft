@@ -16,6 +16,7 @@ import {
   teamHasOpenNormalSlot,
   totalPicksFilled,
 } from "./pickReducer";
+import { declinePullback, invokePullback } from "./pullbackReducer";
 import { buildReactionQueue, resolveReaction } from "./reactionQueue";
 import { declineSave, invokeSave } from "./saveReducer";
 
@@ -94,57 +95,11 @@ export function draftEngine(state: DraftState, action: Action): DraftState {
     case "DECLINE_SAVE":
       return declineSave(state);
 
-    case "INVOKE_PULLBACK": {
-      // Reachable from either prompt kind: a plain pullback prompt, or a save
-      // prompt where the team is choosing to pull back instead of saving.
-      if (
-        !state.pendingPrompt ||
-        (state.pendingPrompt.kind !== "pullback" &&
-          state.pendingPrompt.kind !== "save")
-      ) {
-        return state;
-      }
-      const { reactingTeamIndex } = state.pendingPrompt;
-      const { pullbackPlayer } = action;
+    case "INVOKE_PULLBACK":
+      return invokePullback(state, action);
 
-      const reactingTeam = state.teams[reactingTeamIndex];
-      const targetRound = reactingTeam.lastAvailableRound;
-
-      const updatedTeam: Team = {
-        ...placeInRoster(reactingTeam, targetRound, pullbackPlayer),
-        lastAvailableRound: targetRound - 1,
-      };
-      const teams = state.teams.map((t, i) =>
-        i === reactingTeamIndex ? updatedTeam : t,
-      );
-      const availablePool = removeFromPool(state.availablePool, pullbackPlayer);
-
-      const record: PickRecord = {
-        round: targetRound,
-        teamIndex: reactingTeamIndex,
-        player: pullbackPlayer,
-        pickType: "pullback",
-      };
-      const pickHistory = [...state.pickHistory, record];
-
-      return {
-        ...state,
-        teams,
-        availablePool,
-        pickHistory,
-        ...resolveReaction(state, teams, advanceCursor),
-      };
-    }
-
-    case "DECLINE_PULLBACK": {
-      if (!state.pendingPrompt || state.pendingPrompt.kind !== "pullback")
-        return state;
-
-      return {
-        ...state,
-        ...resolveReaction(state, state.teams, advanceCursor),
-      };
-    }
+    case "DECLINE_PULLBACK":
+      return declinePullback(state);
 
     case "ADVANCE_SIMULATION": {
       if (state.isDraftComplete) return state;
