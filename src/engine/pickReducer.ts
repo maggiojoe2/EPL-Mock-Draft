@@ -1,5 +1,6 @@
-import type { PickRecord, Player, Team } from "../types";
+import type { DraftState, PickRecord, Player, Team } from "../types";
 import { TOTAL_ROUNDS } from "../constants";
+import { buildReactionQueue, resolveReaction } from "./reactionQueue";
 
 // ── Roster / pool helpers ────────────────────────────────────────────────
 
@@ -55,10 +56,9 @@ export function teamHasOpenNormalSlot(team: Team, fromRound: number): boolean {
  *  null once no team has any pick left to make — the draft is complete.
  *
  *  This is the single "find the next team+round with an open slot" primitive
- *  for the engine: the AI-turn skip check (currently inline in
- *  `draftEngine.ts`'s `ADVANCE_SIMULATION` case, moving to
- *  `simulationOrchestrator.ts` in a later extraction) is expected to call
- *  this instead of keeping its own loop. */
+ *  for the engine: the AI-turn skip check in `simulationOrchestrator.ts`'s
+ *  `ADVANCE_SIMULATION` handling calls this instead of keeping its own
+ *  loop. */
 export function advanceCursor(
   round: number,
   teamIndex: number,
@@ -101,4 +101,45 @@ export function retractNormalPick(
         r.pickType === "normal"
       ),
   );
+}
+
+// ── PICK_PLAYER reducer ──────────────────────────────────────────────────
+
+/** Handle a normal pick: place the player in the picking team's next open
+ *  normal slot, remove them from the pool, record the pick, and build/drain
+ *  any reactions the pick triggers. */
+export function pickPlayer(state: DraftState, player: Player): DraftState {
+  const { round, teamIndex } = state.currentPick;
+  const pickingTeam = state.teams[teamIndex];
+
+  // Slot for this normal pick: scan forward past any pre-filled slots
+  // (saves or pullbacks placed there earlier in the draft).
+  const targetRound = nextNormalSlot(pickingTeam, round);
+  const updatedTeam = placeInRoster(pickingTeam, targetRound, player);
+  const teams = state.teams.map((t, i) => (i === teamIndex ? updatedTeam : t));
+
+  const availablePool = removeFromPool(state.availablePool, player);
+
+  const record: PickRecord = {
+    round: targetRound,
+    teamIndex,
+    player,
+    pickType: "normal",
+  };
+  const pickHistory = [...state.pickHistory, record];
+
+  // Build any reaction prompts triggered by this pick.
+  const reactionQueue = buildReactionQueue(
+    { ...state, teams, availablePool },
+    player,
+    teamIndex,
+  );
+
+  return {
+    ...state,
+    teams,
+    availablePool,
+    pickHistory,
+    ...resolveReaction({ ...state, reactionQueue }, teams, advanceCursor),
+  };
 }
