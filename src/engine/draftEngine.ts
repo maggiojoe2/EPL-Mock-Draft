@@ -48,6 +48,22 @@ function teamHasOpenNormalSlot(team: Team, fromRound: number): boolean {
   return false
 }
 
+/** Advance the cursor via nextPick, skipping any team whose roster has no
+ *  open normal slot at the landing round (e.g. a franchise team whose round-16
+ *  slot is pre-filled and whose normal picks are already exhausted). Returns
+ *  null once no team has any pick left to make — the draft is complete. */
+function advanceCursor(
+  round: number,
+  teamIndex: number,
+  teams: Team[],
+): { round: number; teamIndex: number } | null {
+  let next = nextPick(round, teamIndex, teams.length)
+  while (next && !teamHasOpenNormalSlot(teams[next.teamIndex]!, next.round)) {
+    next = nextPick(next.round, next.teamIndex, teams.length)
+  }
+  return next
+}
+
 /** Return the first unfilled roster slot >= fromRound for the given team.
  *  Saves and pullbacks fill from the back; a normal pick must skip any such
  *  pre-filled slots so it never overwrites them. */
@@ -148,13 +164,9 @@ function resolveReaction(
   const { head: pendingPrompt, tail: reactionQueue } = dequeue(state.reactionQueue)
 
   const { round, teamIndex } = state.currentPick
-  const next = pendingPrompt === null ? nextPick(round, teamIndex, teams.length) : null
+  const next = pendingPrompt === null ? advanceCursor(round, teamIndex, teams) : null
 
-  const totalFilled = totalPicksFilled(teams)
-  const isDraftComplete =
-    pendingPrompt === null &&
-    reactionQueue.length === 0 &&
-    totalFilled === teams.length * TOTAL_ROUNDS
+  const isDraftComplete = pendingPrompt === null && reactionQueue.length === 0 && next === null
 
   return {
     currentPick: next ?? state.currentPick,
@@ -199,11 +211,8 @@ export function draftEngine(state: DraftState, action: Action): DraftState {
 
       const { head: pendingPrompt, tail: remainingQueue } = dequeue(reactionQueue)
 
-      const totalFilled = totalPicksFilled(teams)
-      const isDraftComplete =
-        reactionQueue.length === 0 && totalFilled === teams.length * TOTAL_ROUNDS
-
-      const next = reactionQueue.length === 0 ? nextPick(round, teamIndex, teams.length) : null
+      const next = reactionQueue.length === 0 ? advanceCursor(round, teamIndex, teams) : null
+      const isDraftComplete = reactionQueue.length === 0 && next === null
 
       return {
         ...state,

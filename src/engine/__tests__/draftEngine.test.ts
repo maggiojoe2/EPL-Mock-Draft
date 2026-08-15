@@ -154,4 +154,51 @@ describe('draft completion', () => {
     }
   })
 
+  // Regression: a franchise team's round-16 slot is pre-filled by initDraft.
+  // Once its 15 normal rounds are also filled, its roster is "full" a round
+  // early relative to the raw team/round cursor. The cursor used to land on
+  // it anyway at round 16, and PICK_PLAYER would throw trying to find an
+  // open slot — crashing the app instead of skipping to the next team.
+  it('skips a franchise team whose normal rounds are already full instead of landing on it at round 16', () => {
+    const franchisePlayer = makePlayer(999)
+    // Rounds 1–14 filled, round 15 is the team's last open normal slot, round
+    // 16 pre-filled by the franchise player (as initDraft does).
+    const roster = Array.from({ length: 17 }, (_, r) => {
+      if (r === 0 || r === 15) return null
+      if (r === 16) return franchisePlayer
+      return makePlayer(r)
+    })
+    const franchiseTeam = makeTeam({
+      name: 'Franchise Team',
+      roster,
+      franchisePlayer,
+      lastAvailableRound: 15,
+    })
+    const otherTeam = makeTeam({ name: 'Other Team' }) // fully open roster
+
+    // Franchise team is on the clock for its final normal pick (round 15).
+    const state = makeDraftState({
+      teams: [otherTeam, franchiseTeam],
+      currentPick: { round: 15, teamIndex: 1 },
+      availablePool: [makePlayer(5001), makePlayer(5002)],
+    })
+
+    // Franchise team fills its last open slot (round 15) — now fully full.
+    // Cursor would naively land on the franchise team again at round 16
+    // (its only remaining "slot" is already occupied by the franchise pick).
+    const afterFranchisePick = draftEngine(state, {
+      type: 'PICK_PLAYER',
+      player: state.availablePool[0]!,
+    })
+    expect(afterFranchisePick.currentPick).toEqual({ round: 16, teamIndex: 0 })
+
+    // Other team makes its round-16 pick; the cursor must skip the now-full
+    // franchise team instead of landing on it and throwing.
+    const final = draftEngine(afterFranchisePick, {
+      type: 'PICK_PLAYER',
+      player: afterFranchisePick.availablePool[0]!,
+    })
+    expect(final.isDraftComplete).toBe(true)
+  })
+
 })
