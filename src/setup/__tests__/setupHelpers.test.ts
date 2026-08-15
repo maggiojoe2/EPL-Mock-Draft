@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { buildTeamsFromImport, autoSelectFranchise } from '../setupHelpers'
 import type { Player } from '../../types'
 import type { RosterImport } from '../csvParser'
@@ -107,6 +107,28 @@ describe('autoSelectFranchise', () => {
     const result = autoSelectFranchise(teams, null)
     expect(result[0]!.franchisePlayer).not.toBeNull()
     expect(result[0]!.franchisePlayer!.id).toBe(eligible.id)
+  })
+
+  it('franchises the best-ADP eligible player when several are eligible', () => {
+    const best = makePlayer('Best Guy', 'RB', 2)
+    const worse = makePlayer('Worse Guy', 'WR', 9)
+    const pool: Player[] = [best, worse]
+    const roster: RosterImport = new Map([
+      ['Team A', [
+        { playerName: 'Worse Guy', franchiseEligible: true, previouslySaved: false },
+        { playerName: 'Best Guy', franchiseEligible: true, previouslySaved: false },
+      ]],
+    ])
+    const teams = buildTeamsFromImport(roster, pool)
+    // Pin Math.random above the mistake-noise threshold so the optimal
+    // (best-ADP) candidate is chosen deterministically.
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.99)
+    try {
+      const result = autoSelectFranchise(teams, null)
+      expect(result[0]!.franchisePlayer!.id).toBe(best.id)
+    } finally {
+      randomSpy.mockRestore()
+    }
   })
 
   it('does not override a franchise player already set', () => {

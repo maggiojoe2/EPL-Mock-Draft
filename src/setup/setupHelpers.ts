@@ -1,6 +1,7 @@
 import type { Player, Team } from '../types'
 import { ROSTER_SLOTS } from '../constants'
 import type { RosterImport } from './csvParser'
+import { computeFranchiseTarget } from '../engine/aiSimulator'
 
 // ── buildTeamsFromImport ───────────────────────────────────────────────────
 
@@ -66,14 +67,9 @@ export function autoSelectFranchise(
     // Skip user team and teams that already have a franchise player set.
     if (i === userTeamIndex || team.franchisePlayer !== null) return team
 
-    const eligible = team.previousYearRoster.filter(p =>
-      team.franchiseEligibleIds.has(p.id),
-    )
+    const target = computeFranchiseTarget(team)
+    if (!target) return team
 
-    if (eligible.length === 0) return team
-
-    // Random selection from eligible players
-    const pick = eligible[Math.floor(Math.random() * eligible.length)]!
-    return { ...team, franchisePlayer: pick }
+    return { ...team, franchisePlayer: target }
   })
 }
