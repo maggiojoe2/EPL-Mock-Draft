@@ -122,11 +122,7 @@ export function advanceSimulation(
   // post-pick cursor advance in `pickReducer.ts`.
   const currentTeam = state.teams[teamIndex];
   if (!teamHasOpenNormalSlot(currentTeam, state.currentPick.round)) {
-    const next = advanceCursor(
-      state.currentPick.round,
-      teamIndex,
-      state.teams,
-    );
+    const next = advanceCursor(state.currentPick.round, teamIndex, state.teams);
     if (!next)
       return {
         ...state,

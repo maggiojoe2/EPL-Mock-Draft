@@ -8,16 +8,13 @@ import { resolveReaction } from "./reactionQueue";
  *  The player is read from `state.pendingPrompt`, not the action, since the
  *  prompt is the source of truth for which player is being saved. */
 export function invokeSave(state: DraftState): DraftState {
-  if (!state.pendingPrompt || state.pendingPrompt.kind !== "save")
-    return state;
+  if (!state.pendingPrompt || state.pendingPrompt.kind !== "save") return state;
   const { pickingTeamIndex, reactingTeamIndex, player } = state.pendingPrompt;
 
   // A save blocks the original pick: remove the player from the picking team's
   // roster; the voided normal pick record is stripped from history below.
   const pickingTeam = state.teams[pickingTeamIndex];
-  const blockedRound = pickingTeam.roster.findIndex(
-    (p) => p?.id === player.id,
-  );
+  const blockedRound = pickingTeam.roster.findIndex((p) => p?.id === player.id);
   const unblockedPickingTeam = placeInRoster(pickingTeam, blockedRound, null);
 
   // Place the player in the saving team's back slot.
@@ -61,8 +58,7 @@ export function invokeSave(state: DraftState): DraftState {
 }
 
 export function declineSave(state: DraftState): DraftState {
-  if (!state.pendingPrompt || state.pendingPrompt.kind !== "save")
-    return state;
+  if (!state.pendingPrompt || state.pendingPrompt.kind !== "save") return state;
 
   return {
     ...state,
