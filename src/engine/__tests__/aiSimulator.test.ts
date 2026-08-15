@@ -1,5 +1,11 @@
 import { describe, it, expect, vi } from 'vitest'
-import { computeFranchiseTarget, computeSaveTarget, computeSaveTargetWithMistake } from '../aiSimulator'
+import {
+  computeExpectedAdp,
+  computeFranchiseTarget,
+  computeSaveTarget,
+  computeSaveTargetWithMistake,
+  shouldPullback,
+} from '../aiSimulator'
 import type { Player } from '../../types'
 
 // ── Fixtures ───────────────────────────────────────────────────────────────
@@ -299,6 +305,54 @@ describe('computeSaveTargetWithMistake', () => {
         franchise,
       )
       expect(target).toBeNull()
+    } finally {
+      randomSpy.mockRestore()
+    }
+  })
+})
+
+// ── computeExpectedAdp ───────────────────────────────────────────────────────
+
+describe('computeExpectedAdp', () => {
+  it('computes (round - 1) * teamCount + teamPositionInOrder', () => {
+    expect(computeExpectedAdp(1, 1, 12)).toBe(1)
+    expect(computeExpectedAdp(1, 12, 12)).toBe(12)
+    expect(computeExpectedAdp(2, 1, 12)).toBe(13)
+    expect(computeExpectedAdp(15, 7, 12)).toBe((15 - 1) * 12 + 7)
+  })
+})
+
+// ── shouldPullback ───────────────────────────────────────────────────────────
+
+describe('shouldPullback', () => {
+  it('accepts when candidate ADP beats (is lower than) the expected round ADP', () => {
+    const result = withoutMistakes(() => shouldPullback(10, 20))
+    expect(result).toBe(true)
+  })
+
+  it('declines when candidate ADP does not beat the expected round ADP', () => {
+    const result = withoutMistakes(() => shouldPullback(30, 20))
+    expect(result).toBe(false)
+  })
+
+  it('declines at the exact boundary (equal ADP is not "better")', () => {
+    const result = withoutMistakes(() => shouldPullback(20, 20))
+    expect(result).toBe(false)
+  })
+
+  it('mistake noise flips an otherwise-accepted decision to decline', () => {
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
+    try {
+      expect(shouldPullback(10, 20)).toBe(false)
+    } finally {
+      randomSpy.mockRestore()
+    }
+  })
+
+  it('mistake noise flips an otherwise-declined decision to accept', () => {
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
+    try {
+      expect(shouldPullback(30, 20)).toBe(true)
     } finally {
       randomSpy.mockRestore()
     }

@@ -16,13 +16,6 @@ export function aiPickPlayer(pool: Player[]): Player | null {
   return scored[0]!.player
 }
 
-/** AI reaction probability: higher for high-value players (low ADP rank).
- *  adp = 1 → ~99% chance to react; adp = 100 → ~10% chance. */
-export function aiShouldReact(playerAdp: number): boolean {
-  const prob = Math.max(0.1, 1 - playerAdp / 100)
-  return Math.random() < prob
-}
-
 // ── Retention strategy (franchise / save / pullback) ───────────────────────
 
 /** Fixed, non-configurable chance that a simulated team's franchise/save/
@@ -138,4 +131,31 @@ export function computeSaveTargetWithMistake(
   const candidates = saveCandidates(team, franchiseTarget)
   if (candidates.length === 0) return null
   return isMistake() ? (candidates[1] ?? candidates[0]!) : candidates[0]!
+}
+
+/**
+ * Expected ADP of the roster slot a pullback (or save) would consume — the
+ * ADP rank a team drafting at its fixed non-snake position would expect from
+ * a normal pick at that round: `(round - 1) * teamCount + teamPositionInOrder`.
+ * `teamPositionInOrder` is 1-indexed.
+ */
+export function computeExpectedAdp(
+  round: number,
+  teamPositionInOrder: number,
+  teamCount: number,
+): number {
+  return (round - 1) * teamCount + teamPositionInOrder
+}
+
+/**
+ * Whether a pullback candidate is worth more than the normal pick the team
+ * would otherwise get with the roster slot the pullback would consume: true
+ * when `candidateAdp` is better (lower) than `expectedAdp`. Subject to
+ * mistake noise, which — since pullback is a live accept/decline call rather
+ * than a choice among candidates — nudges the outcome to the wrong side of
+ * the threshold for this one decision instead of substituting a candidate.
+ */
+export function shouldPullback(candidateAdp: number, expectedAdp: number): boolean {
+  const optimal = candidateAdp < expectedAdp
+  return isMistake() ? !optimal : optimal
 }

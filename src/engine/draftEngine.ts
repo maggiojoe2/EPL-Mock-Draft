@@ -1,5 +1,11 @@
 import type { Action, DraftState, PickRecord, Player, Team } from '../types'
-import { aiPickPlayer, aiShouldReact, computeSaveTargetWithMistake } from './aiSimulator'
+import {
+  aiPickPlayer,
+  computeExpectedAdp,
+  computeSaveTarget,
+  computeSaveTargetWithMistake,
+  shouldPullback,
+} from './aiSimulator'
 
 const TOTAL_ROUNDS = 16
 
@@ -74,6 +80,29 @@ function nextNormalSlot(team: Team, fromRound: number): number {
   // Should never happen in a well-formed draft: the engine only reaches here
   // if the team's roster is already full, but the draft would be complete.
   throw new Error(`No open normal slot for team "${team.name}" starting at round ${fromRound}`)
+}
+
+/** Picks the first pullback candidate (options are ADP-sorted, best first)
+ *  worth pulling back per the round-cost value comparison, skipping the
+ *  team's current save target — that player is handled entirely by the save
+ *  branch and never independently evaluated for pullback in the same
+ *  decision. `round` is the team's `lastAvailableRound` at the moment of the
+ *  decision: the slot a pullback would consume. Returns null when no
+ *  candidate clears the bar. */
+function selectPullbackCandidate(
+  options: Player[],
+  team: Team,
+  teamPositionInOrder: number,
+  round: number,
+  teamCount: number,
+): Player | null {
+  const saveTarget = computeSaveTarget(team, team.franchisePlayer)
+  const expectedAdp = computeExpectedAdp(round, teamPositionInOrder, teamCount)
+  for (const candidate of options) {
+    if (candidate.id === saveTarget?.id) continue
+    if (shouldPullback(candidate.adp, expectedAdp)) return candidate
+  }
+  return null
 }
 
 // ── Reaction helpers ───────────────────────────────────────────────────────
@@ -343,27 +372,39 @@ export function draftEngine(state: DraftState, action: Action): DraftState {
 
         // Resolve an AI team's reaction.
         const prompt = state.pendingPrompt
+        const reactingTeam = state.teams[prompt.reactingTeamIndex]!
         if (prompt.kind === 'save') {
           // Recomputed fresh (not cached) so it reflects the team's current
           // franchisePlayer and saveHistory rather than a value fixed at
           // draft start.
-          const reactingTeam = state.teams[prompt.reactingTeamIndex]!
           const saveTarget = computeSaveTargetWithMistake(reactingTeam, reactingTeam.franchisePlayer)
           if (saveTarget && saveTarget.id === prompt.player.id) {
             return draftEngine(state, { type: 'INVOKE_SAVE', player: prompt.player })
           }
-          // Save declined — fall back to pulling back the best remaining
-          // option before giving up entirely.
-          const saveOpts = prompt.pullbackOptions
-          if (saveOpts.length > 0 && aiShouldReact(saveOpts[0]!.adp)) {
-            return draftEngine(state, { type: 'INVOKE_PULLBACK', pullbackPlayer: saveOpts[0]! })
+          // Save declined — fall back to a value-based pullback evaluation
+          // before giving up entirely.
+          const pullbackTarget = selectPullbackCandidate(
+            prompt.pullbackOptions,
+            reactingTeam,
+            prompt.reactingTeamIndex + 1,
+            reactingTeam.lastAvailableRound,
+            state.teams.length,
+          )
+          if (pullbackTarget) {
+            return draftEngine(state, { type: 'INVOKE_PULLBACK', pullbackPlayer: pullbackTarget })
           }
           return draftEngine(state, { type: 'DECLINE_SAVE' })
         }
         // pullback
-        const opts = prompt.pullbackOptions
-        if (opts.length > 0 && aiShouldReact(opts[0]!.adp)) {
-          return draftEngine(state, { type: 'INVOKE_PULLBACK', pullbackPlayer: opts[0]! })
+        const pullbackTarget = selectPullbackCandidate(
+          prompt.pullbackOptions,
+          reactingTeam,
+          prompt.reactingTeamIndex + 1,
+          reactingTeam.lastAvailableRound,
+          state.teams.length,
+        )
+        if (pullbackTarget) {
+          return draftEngine(state, { type: 'INVOKE_PULLBACK', pullbackPlayer: pullbackTarget })
         }
         return draftEngine(state, { type: 'DECLINE_PULLBACK' })
       }

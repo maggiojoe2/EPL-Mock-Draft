@@ -163,13 +163,85 @@ describe('ADVANCE_SIMULATION', () => {
     expect(next.pendingPrompt).toBeNull()
   })
 
+  // ── AI pullback decision (standalone prompt): round-cost value rule ──────
+
+  it('a standalone pullback prompt pulls back a candidate whose ADP beats the expected round ADP', () => {
+    const pickedPlayer: Player = makePlayer(0) // already saved previously — this pick can't be saved again
+    const saveTargetPlayer: Player = makePlayer(1) // best remaining ADP — the current save target, not offered here
+    const pullbackOption: Player = makePlayer(49) // adp 50, well under the round-15 expected ADP of 170
+    const ownerTeam = makeTeam({
+      name: 'Owner',
+      previousYearRoster: [pickedPlayer, saveTargetPlayer, pullbackOption],
+      saveHistory: new Set([pickedPlayer.id]),
+      lastAvailableRound: 15,
+    })
+    const teams = Array.from({ length: 12 }, (_, i) =>
+      i === 1 ? ownerTeam : makeTeam({ name: `Team ${i}` }),
+    )
+    const state = makeDraftState({
+      mode: 'watch',
+      userTeamIndex: null,
+      teams,
+      pendingPrompt: {
+        kind: 'pullback',
+        pickingTeamIndex: 0,
+        reactingTeamIndex: 1,
+        pickedPlayer,
+        pullbackOptions: [pullbackOption],
+      },
+      currentPick: { round: 1, teamIndex: 0 },
+    })
+
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.99)
+    try {
+      const next = draftEngine(state, { type: 'ADVANCE_SIMULATION' })
+      expect(next.teams[1]!.roster[15]).toEqual(pullbackOption)
+    } finally {
+      randomSpy.mockRestore()
+    }
+  })
+
+  it('a standalone pullback prompt declines when no candidate beats the expected round ADP', () => {
+    const pickedPlayer: Player = makePlayer(0)
+    const pullbackOption: Player = makePlayer(250) // adp 251, well over the round-15 expected ADP of 170
+    const ownerTeam = makeTeam({
+      name: 'Owner',
+      previousYearRoster: [pickedPlayer, pullbackOption],
+      saveHistory: new Set([pickedPlayer.id]),
+      lastAvailableRound: 15,
+    })
+    const teams = Array.from({ length: 12 }, (_, i) =>
+      i === 1 ? ownerTeam : makeTeam({ name: `Team ${i}` }),
+    )
+    const state = makeDraftState({
+      mode: 'watch',
+      userTeamIndex: null,
+      teams,
+      pendingPrompt: {
+        kind: 'pullback',
+        pickingTeamIndex: 0,
+        reactingTeamIndex: 1,
+        pickedPlayer,
+        pullbackOptions: [pullbackOption],
+      },
+      currentPick: { round: 1, teamIndex: 0 },
+    })
+
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.99)
+    try {
+      const next = draftEngine(state, { type: 'ADVANCE_SIMULATION' })
+      expect(next.teams[1]!.roster[15]).toBeNull()
+    } finally {
+      randomSpy.mockRestore()
+    }
+  })
+
   // ── AI save decision: target-match, not probability ──────────────────────
   //
-  // The save branch no longer runs an ADP-probability check (aiShouldReact);
-  // it invokes the save iff the picked player matches the team's current
-  // save target (via computeSaveTargetWithMistake). Only the *fallback* to
-  // pullback, once a save is declined, still uses aiShouldReact — that's
-  // ticket 03's territory.
+  // The save branch runs no ADP-probability check; it invokes the save iff
+  // the picked player matches the team's current save target (via
+  // computeSaveTargetWithMistake). The *fallback* to pullback, once a save
+  // is declined, uses the round-cost value comparison (shouldPullback).
 
   /** Runs `fn` with Math.random pinned above the mistake-noise threshold, so
    *  the save target is the algorithm's undisturbed top choice. */
@@ -215,9 +287,57 @@ describe('ADVANCE_SIMULATION', () => {
     expect(next.pendingPrompt).toBeNull()
   })
 
-  it('AI falls back to pulling back the best option when the picked player is not the save target', () => {
-    const trueTarget: Player = makePlayer(0) // best ADP → the real save target
+  it('AI falls back to pulling back a value-positive candidate when the picked player is not the save target', () => {
+    const trueTarget: Player = makePlayer(0) // best ADP → the real save target, excluded from pullback
+    const otherCandidate: Player = makePlayer(49) // adp 50 — clears the round-cost bar, not the save target
     const player: Player = makePlayer(99) // the (worse) player actually picked
+    const ownerTeam = makeTeam({
+      name: 'Owner',
+      previousYearRoster: [player, trueTarget, otherCandidate],
+      saveHistory: new Set(),
+      saveUsedThisDraft: false,
+      lastAvailableRound: 15,
+    })
+    const teams = Array.from({ length: 12 }, (_, i) =>
+      i === 1 ? ownerTeam : makeTeam({ name: `Team ${i}` }),
+    )
+    const state = makeDraftState({
+      mode: 'watch',
+      userTeamIndex: null,
+      teams,
+      pendingPrompt: {
+        kind: 'save',
+        pickingTeamIndex: 0,
+        reactingTeamIndex: 1,
+        player,
+        // ADP-sorted, best first — trueTarget precedes otherCandidate, but
+        // trueTarget is the save target and must be skipped for pullback.
+        pullbackOptions: [trueTarget, otherCandidate],
+      },
+      currentPick: { round: 1, teamIndex: 0 },
+    })
+
+    // The save target (trueTarget) doesn't match the picked player, so the
+    // save is declined; the fallback to pullback now runs the round-cost
+    // value comparison. Team 1 at round 15 with 12 teams has an expected ADP
+    // of (15-1)*12+2 = 170, comfortably above otherCandidate's 50, so it's
+    // worth pulling back. Random pinned above the mistake threshold so the
+    // undisturbed rule applies.
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.99)
+    let next
+    try {
+      next = draftEngine(state, { type: 'ADVANCE_SIMULATION' })
+    } finally {
+      randomSpy.mockRestore()
+    }
+    expect(next.teams[1]!.roster[15]).toEqual(otherCandidate)
+    expect(next.teams[1]!.saveUsedThisDraft).toBe(false)
+    expect(next.pendingPrompt).toBeNull()
+  })
+
+  it('does not independently evaluate the current save target for pullback (declines when it is the only option)', () => {
+    const trueTarget: Player = makePlayer(0) // best ADP → the save target, and the only pullback option
+    const player: Player = makePlayer(99)
     const ownerTeam = makeTeam({
       name: 'Owner',
       previousYearRoster: [player, trueTarget],
@@ -242,27 +362,24 @@ describe('ADVANCE_SIMULATION', () => {
       currentPick: { round: 1, teamIndex: 0 },
     })
 
-    // The save target (trueTarget) doesn't match the picked player, so the
-    // save is declined; the fallback to pullback still runs its own
-    // aiShouldReact check (low adp on trueTarget → high pullback probability).
-    // 0.5 clears that probability check while staying above the mistake
-    // threshold, so the save-target computation itself is undisturbed.
-    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
-    let next
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.99)
     try {
-      next = draftEngine(state, { type: 'ADVANCE_SIMULATION' })
+      const next = draftEngine(state, { type: 'ADVANCE_SIMULATION' })
+      // trueTarget's ADP (1) would easily clear the round-cost bar, but it's
+      // the current save target and must not be pulled back in this decision.
+      expect(next.teams[1]!.roster[15]).toBeNull()
+      expect(next.teams[1]!.saveUsedThisDraft).toBe(false)
+      expect(next.teams[1]!.lastAvailableRound).toBe(15)
+      expect(next.pendingPrompt).toBeNull()
     } finally {
       randomSpy.mockRestore()
     }
-    expect(next.teams[1]!.roster[15]).toEqual(trueTarget)
-    expect(next.teams[1]!.saveUsedThisDraft).toBe(false)
-    expect(next.pendingPrompt).toBeNull()
   })
 
-  it('AI declines entirely when the picked player is not the save target and the pullback fallback also declines', () => {
+  it('AI declines entirely when the picked player is not the save target and no pullback candidate clears the value bar', () => {
     const trueTarget: Player = makePlayer(0)
     const player: Player = makePlayer(99)
-    const pullbackOption: Player = makePlayer(98) // high adp → low pullback-react probability
+    const pullbackOption: Player = makePlayer(250) // adp 251 — well above the round-15 expected ADP
     const ownerTeam = makeTeam({
       name: 'Owner',
       previousYearRoster: [player, trueTarget],
