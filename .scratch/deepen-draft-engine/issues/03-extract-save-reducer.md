@@ -4,10 +4,28 @@
 
 **Blocked by:** 01, 02.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] `saveReducer.ts` exists under `src/engine/` and exports the `INVOKE_SAVE`/`DECLINE_SAVE` handling logic
-- [ ] `draftEngine.ts` no longer defines this logic itself — it imports and delegates to `saveReducer.ts`
-- [ ] The retraction of a blocked normal pick goes through `retractNormalPick` (ticket 02), not an inline filter
-- [ ] `draftEngine.test.ts`, `reactions.test.ts`, `advanceSimulation.test.ts`, and `aiSimulator.test.ts` all pass unmodified
-- [ ] No new tests added
+- [x] `saveReducer.ts` exists under `src/engine/` and exports the `INVOKE_SAVE`/`DECLINE_SAVE` handling logic
+- [x] `draftEngine.ts` no longer defines this logic itself — it imports and delegates to `saveReducer.ts`
+- [x] The retraction of a blocked normal pick goes through `retractNormalPick` (ticket 02), not an inline filter
+- [x] `draftEngine.test.ts`, `reactions.test.ts`, `advanceSimulation.test.ts`, and `aiSimulator.test.ts` all pass unmodified
+- [x] No new tests added
+
+## Comments
+
+Implemented as `invokeSave(state)` / `declineSave(state)` in `saveReducer.ts`.
+`invokeSave` reads the player from `state.pendingPrompt` rather than the
+`INVOKE_SAVE` action — the original inline case never used `action.player`
+either, since the prompt is the source of truth for which player is being
+saved, so the function takes no action parameter at all. `INVOKE_SAVE` now
+retracts the blocked normal pick via `retractNormalPick` (ticket 02) instead
+of the inline `pickHistory` filter. `DECLINE_SAVE` is a straight extraction
+calling `resolveReaction` (ticket 01) with `advanceCursor` (ticket 02).
+`draftEngine.ts`'s two cases are now one-line delegations.
+
+`npx tsc --noEmit`, `npx eslint src/engine/`, and the full `vitest run` suite
+(118 tests, 7 files) all pass unmodified. `App.tsx` still only imports
+`draftEngine` from `src/engine/`.
+
+Marked `ready-for-human` for a merge decision.

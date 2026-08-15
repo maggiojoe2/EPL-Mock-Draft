@@ -17,6 +17,7 @@ import {
   totalPicksFilled,
 } from "./pickReducer";
 import { buildReactionQueue, resolveReaction } from "./reactionQueue";
+import { declineSave, invokeSave } from "./saveReducer";
 
 // ── Pure helpers ───────────────────────────────────────────────────────────
 
@@ -87,80 +88,11 @@ export function draftEngine(state: DraftState, action: Action): DraftState {
       };
     }
 
-    case "INVOKE_SAVE": {
-      if (!state.pendingPrompt || state.pendingPrompt.kind !== "save")
-        return state;
-      const { pickingTeamIndex, reactingTeamIndex, player } =
-        state.pendingPrompt;
+    case "INVOKE_SAVE":
+      return invokeSave(state);
 
-      // A save blocks the original pick: remove the player from the picking team's
-      // roster and strip the normal pick record from history.
-      const pickingTeam = state.teams[pickingTeamIndex];
-      const blockedRound = pickingTeam.roster.findIndex(
-        (p) => p?.id === player.id,
-      );
-      const unblockedPickingTeam = placeInRoster(
-        pickingTeam,
-        blockedRound,
-        null,
-      );
-
-      // Place the player in the saving team's back slot.
-      const reactingTeam = state.teams[reactingTeamIndex];
-      const targetRound = reactingTeam.lastAvailableRound;
-      const updatedReactingTeam: Team = {
-        ...placeInRoster(reactingTeam, targetRound, player),
-        saveUsedThisDraft: true,
-        lastAvailableRound: targetRound - 1,
-      };
-
-      const teams = state.teams.map((t, i) => {
-        if (i === pickingTeamIndex) return unblockedPickingTeam;
-        if (i === reactingTeamIndex) return updatedReactingTeam;
-        return t;
-      });
-
-      // Drop the voided normal pick from history; add the save record.
-      const pickHistory = [
-        ...state.pickHistory.filter(
-          (r) =>
-            !(
-              r.teamIndex === pickingTeamIndex &&
-              r.player.id === player.id &&
-              r.pickType === "normal"
-            ),
-        ),
-        {
-          round: targetRound,
-          teamIndex: reactingTeamIndex,
-          player,
-          pickType: "save" as const,
-        },
-      ];
-
-      // The save blocks the pick — cursor stays at the picking team's position
-      // so they can pick again. Clear remaining reactions (they all referenced
-      // the now-blocked pick).
-      return {
-        ...state,
-        teams,
-        pickHistory,
-        pendingPrompt: null,
-        reactionQueue: [],
-        currentPick: state.currentPick, // unchanged — picker tries again
-        isDraftComplete: false,
-      };
-    }
-
-    case "DECLINE_SAVE": {
-      if (!state.pendingPrompt || state.pendingPrompt.kind !== "save")
-        return state;
-
-      return {
-        ...state,
-        ...resolveReaction(state, state.teams, advanceCursor),
-      };
-    }
+    case "DECLINE_SAVE":
+      return declineSave(state);
 
     case "INVOKE_PULLBACK": {
       // Reachable from either prompt kind: a plain pullback prompt, or a save
