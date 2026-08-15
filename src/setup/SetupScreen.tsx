@@ -46,6 +46,10 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
     onDraftStart(buildDraftState());
   };
 
+  // Wizard step numbering: steps 1–2 are always shown; step 3 (Franchise
+  // Player) only appears once a practice-mode team is selected, so every
+  // step after it shifts down by one when it's hidden.
+  const franchiseStepNumber = 3;
   const draftOrderStepNumber = franchiseStepVisible ? 4 : 3;
   const rosterStepNumber = franchiseStepVisible ? 5 : 4;
 
@@ -69,6 +73,7 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
       )}
 
       <ImportStep
+        stepNumber={1}
         playerPoolCount={playerPool.length}
         teamsCount={teams.length}
         importError={importError}
@@ -79,6 +84,7 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
       {hasImport && (
         <>
           <ModeStep
+            stepNumber={2}
             mode={mode}
             teams={teams}
             userTeamIndex={userTeamIndex}
@@ -86,8 +92,11 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
             onUserTeamIndexChange={setUserTeamIndex}
           />
 
+          {/* franchiseStepVisible guarantees userTeam/userTeamIndex are non-null
+              (see useSetupState: it's mode === "practice" && userTeamIndex !== null). */}
           {franchiseStepVisible && (
             <FranchiseStep
+              stepNumber={franchiseStepNumber}
               userTeam={userTeam!}
               userTeamIndex={userTeamIndex!}
               userEligiblePlayers={userEligiblePlayers}

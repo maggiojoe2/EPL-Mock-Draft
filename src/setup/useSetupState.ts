@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { CSV_COLUMNS, parsePlayerPoolCsv, parseRosterCsv } from "./csvParser";
 import { buildTeamsFromImport, autoSelectFranchise } from "./setupHelpers";
 import { initDraft } from "../engine/initDraft";
-import type { DraftState, Player, Team } from "../types";
+import type { DraftMode, DraftState, Player, Team } from "../types";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -220,7 +220,7 @@ export function withFranchisePlayerSet(
 export function computeValidationErrors(
   playerPool: Player[],
   teams: Team[],
-  mode: "practice" | "watch",
+  mode: DraftMode,
   userTeamIndex: number | null,
 ): string[] {
   const errors: string[] = [];
@@ -271,7 +271,7 @@ export function searchAvailablePlayers(
 }
 
 export function buildDraftStateFrom(
-  mode: "practice" | "watch",
+  mode: DraftMode,
   userTeamIndex: number | null,
   teams: Team[],
   playerPool: Player[],
@@ -304,7 +304,7 @@ function readFileAsText(file: File): Promise<string> {
 export function useSetupState() {
   const [playerPool, setPlayerPool] = useState<Player[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
-  const [mode, setMode] = useState<"practice" | "watch">("practice");
+  const [mode, setMode] = useState<DraftMode>("practice");
   const [userTeamIndex, setUserTeamIndex] = useState<number | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [defaultsStatus, setDefaultsStatus] =

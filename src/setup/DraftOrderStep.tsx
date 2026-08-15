@@ -1,9 +1,9 @@
-import type { Team } from "../types";
+import type { DraftMode, Team } from "../types";
 
 interface DraftOrderStepProps {
   stepNumber: number;
   teams: Team[];
-  mode: "practice" | "watch";
+  mode: DraftMode;
   userTeamIndex: number | null;
   onMoveTeam: (index: number, direction: -1 | 1) => void;
 }

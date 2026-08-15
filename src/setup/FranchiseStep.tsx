@@ -1,6 +1,7 @@
 import type { Player, Team } from "../types";
 
 interface FranchiseStepProps {
+  stepNumber: number;
   userTeam: Team;
   userTeamIndex: number;
   userEligiblePlayers: Player[];
@@ -8,6 +9,7 @@ interface FranchiseStepProps {
 }
 
 export default function FranchiseStep({
+  stepNumber,
   userTeam,
   userTeamIndex,
   userEligiblePlayers,
@@ -15,7 +17,7 @@ export default function FranchiseStep({
 }: FranchiseStepProps) {
   return (
     <section className="setup-section">
-      <h2>3 · Franchise Player</h2>
+      <h2>{stepNumber} · Franchise Player</h2>
       {userEligiblePlayers.length === 0 ? (
         <p className="muted">
           {userTeam.name} has no franchise-eligible players — saves and

@@ -62,8 +62,11 @@ export type PullbackPrompt = {
 
 export type PendingPrompt = SavePrompt | PullbackPrompt;
 
+/** "practice" — user controls one team; "watch" — all 12 teams simulate. */
+export type DraftMode = "practice" | "watch";
+
 export interface DraftState {
-  mode: "practice" | "watch";
+  mode: DraftMode;
   /** null in watch mode */
   userTeamIndex: number | null;
   teams: Team[];

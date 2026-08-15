@@ -1,6 +1,7 @@
 import { CSV_COLUMNS } from "./csvParser";
 
 interface ImportStepProps {
+  stepNumber: number;
   playerPoolCount: number;
   teamsCount: number;
   importError: string | null;
@@ -9,6 +10,7 @@ interface ImportStepProps {
 }
 
 export default function ImportStep({
+  stepNumber,
   playerPoolCount,
   teamsCount,
   importError,
@@ -17,7 +19,7 @@ export default function ImportStep({
 }: ImportStepProps) {
   return (
     <section className="setup-section">
-      <h2>1 · Import Data</h2>
+      <h2>{stepNumber} · Import Data</h2>
       <div className="import-row">
         <label className="file-label">
           <span>Player Pool CSV</span>

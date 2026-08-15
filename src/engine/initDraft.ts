@@ -1,8 +1,8 @@
-import type { DraftState, Player, Team } from "../types";
+import type { DraftMode, DraftState, Player, Team } from "../types";
 
 /** Build the initial DraftState for a new draft session. */
 export function initDraft(params: {
-  mode: "practice" | "watch";
+  mode: DraftMode;
   userTeamIndex: number | null;
   teams: Team[];
   availablePool: Player[];

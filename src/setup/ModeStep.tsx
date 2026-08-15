@@ -1,14 +1,16 @@
-import type { Team } from "../types";
+import type { DraftMode, Team } from "../types";
 
 interface ModeStepProps {
-  mode: "practice" | "watch";
+  stepNumber: number;
+  mode: DraftMode;
   teams: Team[];
   userTeamIndex: number | null;
-  onModeChange: (mode: "practice" | "watch") => void;
+  onModeChange: (mode: DraftMode) => void;
   onUserTeamIndexChange: (index: number | null) => void;
 }
 
 export default function ModeStep({
+  stepNumber,
   mode,
   teams,
   userTeamIndex,
@@ -17,7 +19,7 @@ export default function ModeStep({
 }: ModeStepProps) {
   return (
     <section className="setup-section">
-      <h2>2 · Draft Mode</h2>
+      <h2>{stepNumber} · Draft Mode</h2>
       <div className="mode-toggle">
         <label
           className={mode === "practice" ? "mode-opt selected" : "mode-opt"}
