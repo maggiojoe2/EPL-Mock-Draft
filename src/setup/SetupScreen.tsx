@@ -1,12 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
-import { parsePlayerPoolCsv, parseRosterCsv } from "./csvParser";
-import { buildTeamsFromImport, autoSelectFranchise } from "./setupHelpers";
-import { initDraft } from "../engine/initDraft";
-import type { DraftState, Player, Team } from "../types";
-
-// ── Default-data status ────────────────────────────────────────────────────
-
-type DefaultsStatus = "loading" | "loaded" | "error" | "overridden";
+import { useState } from "react";
+import { useSetupState } from "./useSetupState";
+import type { DraftState } from "../types";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -14,324 +8,50 @@ interface SetupScreenProps {
   onDraftStart: (state: DraftState) => void;
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-function readFileAsText(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => resolve(e.target!.result as string);
-    reader.onerror = () => reject(new Error("Failed to read file"));
-    reader.readAsText(file);
-  });
-}
-
-/** Immutably update teams[index] with a mapper function. */
-function updateTeam(
-  teams: Team[],
-  index: number,
-  mapper: (t: Team) => Team,
-): Team[] {
-  return teams.map((t, i) => (i === index ? mapper(t) : t));
-}
-
 // ── SetupScreen ────────────────────────────────────────────────────────────
 
 export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
-  const [playerPool, setPlayerPool] = useState<Player[]>([]);
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [mode, setMode] = useState<"practice" | "watch">("practice");
-  const [userTeamIndex, setUserTeamIndex] = useState<number | null>(null);
+  const {
+    playerPool,
+    teams,
+    mode,
+    userTeamIndex,
+    importError,
+    defaultsStatus,
+    validationErrors,
+    userTeam,
+    userEligiblePlayers,
+    hasImport,
+    franchiseStepVisible,
+    canStart,
+    setMode,
+    setUserTeamIndex,
+    handlePlayerPoolFile,
+    handleRosterFile,
+    removePlayerFromRoster,
+    toggleFranchiseEligible,
+    togglePreviouslySaved,
+    addPlayerToRoster,
+    moveTeam,
+    setFranchisePlayer,
+    searchAvailablePlayers,
+    buildDraftState,
+  } = useSetupState();
+
   const [expandedTeam, setExpandedTeam] = useState<number | null>(null);
   /** Player search session: which team's panel is open + current query string. */
   const [playerSearch, setPlayerSearch] = useState<{
     teamIndex: number;
     query: string;
   } | null>(null);
-  const [importError, setImportError] = useState<string | null>(null);
-  const [defaultsStatus, setDefaultsStatus] =
-    useState<DefaultsStatus>("loading");
 
-  // ── Load default data on mount ───────────────────────────────────────────
+  const handleStart = () => {
+    onDraftStart(buildDraftState());
+  };
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadDefaults() {
-      try {
-        const [playersResp, rostersResp] = await Promise.all([
-          fetch(`${import.meta.env.BASE_URL}defaults/players.csv`),
-          fetch(`${import.meta.env.BASE_URL}defaults/rosters.csv`),
-        ]);
-
-        if (!playersResp.ok || !rostersResp.ok) {
-          if (!cancelled) setDefaultsStatus("error");
-          return;
-        }
-
-        const [playersText, rostersText] = await Promise.all([
-          playersResp.text(),
-          rostersResp.text(),
-        ]);
-
-        const players = parsePlayerPoolCsv(playersText);
-        const rosterImport = parseRosterCsv(rostersText);
-
-        const totalRosterPlayers = [...rosterImport.values()].reduce(
-          (n, rows) => n + rows.length,
-          0,
-        );
-        if (players.length === 0 || totalRosterPlayers === 0) {
-          if (!cancelled) setDefaultsStatus("error");
-          return;
-        }
-
-        const defaultTeams = buildTeamsFromImport(rosterImport, players);
-
-        if (!cancelled) {
-          setPlayerPool(players);
-          setTeams(defaultTeams);
-          setDefaultsStatus("loaded");
-        }
-      } catch {
-        if (!cancelled) setDefaultsStatus("error");
-      }
-    }
-
-    void loadDefaults();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // ── CSV import handlers ──────────────────────────────────────────────────
-
-  const handlePlayerPoolFile = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      try {
-        const text = await readFileAsText(file);
-        const players = parsePlayerPoolCsv(text);
-        if (players.length === 0) {
-          setImportError(
-            "Player pool CSV produced no valid rows. Check column names: name, position, nfl_team, adp",
-          );
-          return;
-        }
-        setPlayerPool(players);
-        setImportError(null);
-        setDefaultsStatus("overridden");
-      } catch {
-        setImportError("Failed to read player pool file.");
-      }
-    },
-    [],
-  );
-
-  const handleRosterFile = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      try {
-        const text = await readFileAsText(file);
-        const rosterImport = parseRosterCsv(text);
-        if (rosterImport.size === 0) {
-          setImportError(
-            "Roster CSV produced no valid teams. Check column names: team_name, player_name, franchise_eligible, previously_saved",
-          );
-          return;
-        }
-        const newTeams = buildTeamsFromImport(rosterImport, playerPool);
-        setTeams(newTeams);
-        setUserTeamIndex(null);
-        setImportError(null);
-        setDefaultsStatus("overridden");
-      } catch {
-        setImportError("Failed to read roster file.");
-      }
-    },
-    [playerPool],
-  );
-
-  // ── Roster editing ───────────────────────────────────────────────────────
-
-  const removePlayerFromRoster = useCallback(
-    (teamIndex: number, playerId: string) => {
-      setTeams((prev) =>
-        updateTeam(prev, teamIndex, (team) => {
-          const previousYearRoster = team.previousYearRoster.filter(
-            (p) => p.id !== playerId,
-          );
-          const franchiseEligibleIds = new Set(team.franchiseEligibleIds);
-          const saveHistory = new Set(team.saveHistory);
-          franchiseEligibleIds.delete(playerId);
-          saveHistory.delete(playerId);
-          // Clear franchise player if they were removed
-          const franchisePlayer =
-            team.franchisePlayer?.id === playerId ? null : team.franchisePlayer;
-          return {
-            ...team,
-            previousYearRoster,
-            franchiseEligibleIds,
-            saveHistory,
-            franchisePlayer,
-          };
-        }),
-      );
-    },
-    [],
-  );
-
-  const toggleFranchiseEligible = useCallback(
-    (teamIndex: number, playerId: string) => {
-      setTeams((prev) =>
-        updateTeam(prev, teamIndex, (team) => {
-          const franchiseEligibleIds = new Set(team.franchiseEligibleIds);
-          if (franchiseEligibleIds.has(playerId)) {
-            franchiseEligibleIds.delete(playerId);
-            // Clear franchise player if they were the declared one and are no longer eligible
-            const franchisePlayer =
-              team.franchisePlayer?.id === playerId
-                ? null
-                : team.franchisePlayer;
-            return { ...team, franchiseEligibleIds, franchisePlayer };
-          } else {
-            franchiseEligibleIds.add(playerId);
-            return { ...team, franchiseEligibleIds };
-          }
-        }),
-      );
-    },
-    [],
-  );
-
-  const togglePreviouslySaved = useCallback(
-    (teamIndex: number, playerId: string) => {
-      setTeams((prev) =>
-        updateTeam(prev, teamIndex, (team) => {
-          const saveHistory = new Set(team.saveHistory);
-          if (saveHistory.has(playerId)) {
-            saveHistory.delete(playerId);
-          } else {
-            saveHistory.add(playerId);
-          }
-          return { ...team, saveHistory };
-        }),
-      );
-    },
-    [],
-  );
-
-  const addPlayerToRoster = useCallback((teamIndex: number, player: Player) => {
-    setTeams((prev) =>
-      updateTeam(prev, teamIndex, (team) => {
-        if (team.previousYearRoster.some((p) => p.id === player.id))
-          return team;
-        return {
-          ...team,
-          previousYearRoster: [...team.previousYearRoster, player],
-        };
-      }),
-    );
-    setPlayerSearch(null);
-  }, []);
-
-  // ── Draft order reordering ───────────────────────────────────────────────
-
-  const moveTeam = useCallback((index: number, direction: -1 | 1) => {
-    setTeams((prev) => {
-      const next = [...prev];
-      const swapIndex = index + direction;
-      if (swapIndex < 0 || swapIndex >= next.length) return prev;
-      [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
-      return next;
-    });
-    // Keep userTeamIndex tracking the same team after reorder
-    setUserTeamIndex((prev) => {
-      if (prev === null) return prev;
-      if (prev === index) return index + direction;
-      if (prev === index + direction) return index;
-      return prev;
-    });
-  }, []);
-
-  // ── Franchise player declaration ─────────────────────────────────────────
-
-  const setFranchisePlayer = useCallback(
-    (teamIndex: number, playerId: string) => {
-      setTeams((prev) =>
-        updateTeam(prev, teamIndex, (team) => {
-          const player =
-            team.previousYearRoster.find((p) => p.id === playerId) ?? null;
-          return { ...team, franchisePlayer: player };
-        }),
-      );
-    },
-    [],
-  );
-
-  // ── Validation ───────────────────────────────────────────────────────────
-
-  const userTeam = userTeamIndex !== null ? teams[userTeamIndex] : null;
-  const userEligiblePlayers = userTeam
-    ? userTeam.previousYearRoster.filter((p) =>
-        userTeam.franchiseEligibleIds.has(p.id),
-      )
+  const filteredPool = playerSearch
+    ? searchAvailablePlayers(playerSearch.teamIndex, playerSearch.query)
     : [];
-
-  const validationErrors: string[] = [];
-  if (playerPool.length === 0)
-    validationErrors.push("Import a player pool CSV first.");
-  if (teams.length < 2)
-    validationErrors.push("Import team rosters CSV (need at least 2 teams).");
-  if (mode === "practice" && userTeamIndex === null) {
-    validationErrors.push("Select your team for practice mode.");
-  }
-  if (
-    mode === "practice" &&
-    userTeam !== null &&
-    userEligiblePlayers.length > 0 &&
-    userTeam.franchisePlayer === null
-  ) {
-    validationErrors.push("Declare your franchise player before starting.");
-  }
-
-  // ── Start draft ───────────────────────────────────────────────────────────
-
-  const handleStart = useCallback(() => {
-    const effectiveUserTeamIndex = mode === "practice" ? userTeamIndex : null;
-    const teamsWithFranchise = autoSelectFranchise(
-      teams,
-      effectiveUserTeamIndex,
-    );
-    const state = initDraft({
-      mode,
-      userTeamIndex: effectiveUserTeamIndex,
-      teams: teamsWithFranchise,
-      availablePool: playerPool,
-    });
-    onDraftStart(state);
-  }, [mode, userTeamIndex, teams, playerPool, onDraftStart]);
-
-  // ── Filtered pool for "add player" search ────────────────────────────────
-
-  const filteredPool =
-    playerSearch !== null && playerSearch.query.length >= 2
-      ? playerPool
-          .filter(
-            (p) =>
-              p.name.toLowerCase().includes(playerSearch.query.toLowerCase()) &&
-              !teams[playerSearch.teamIndex].previousYearRoster.some(
-                (r) => r.id === p.id,
-              ),
-          )
-          .slice(0, 10)
-      : [];
-
-  // ── Render ────────────────────────────────────────────────────────────────
-
-  const hasImport = playerPool.length > 0 && teams.length > 0;
-  const franchiseStepVisible = mode === "practice" && userTeamIndex !== null;
 
   return (
     <div className="setup-screen">
@@ -361,7 +81,10 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
             <input
               type="file"
               accept=".csv"
-              onChange={(e) => void handlePlayerPoolFile(e)}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handlePlayerPoolFile(file);
+              }}
             />
             <span className="file-status">
               {playerPool.length > 0
@@ -375,7 +98,10 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
               type="file"
               accept=".csv"
               disabled={playerPool.length === 0}
-              onChange={(e) => void handleRosterFile(e)}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handleRosterFile(file);
+              }}
             />
             <span className="file-status">
               {teams.length > 0
@@ -479,7 +205,7 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
                     id="franchise-select"
                     value={userTeam!.franchisePlayer?.id ?? ""}
                     onChange={(e) =>
-                      setFranchisePlayer(userTeamIndex, e.target.value)
+                      setFranchisePlayer(userTeamIndex!, e.target.value)
                     }
                   >
                     <option value="">— select —</option>
@@ -636,7 +362,10 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
                                 <li key={p.id}>
                                   <button
                                     className="search-result-btn"
-                                    onClick={() => addPlayerToRoster(ti, p)}
+                                    onClick={() => {
+                                      addPlayerToRoster(ti, p);
+                                      setPlayerSearch(null);
+                                    }}
                                   >
                                     {p.name} ({p.position}, {p.nflTeam}) — ADP #
                                     {p.adp}
@@ -676,7 +405,7 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
         )}
         <button
           className="btn-primary start-btn"
-          disabled={validationErrors.length > 0}
+          disabled={!canStart}
           onClick={handleStart}
         >
           🏈 Start Draft
