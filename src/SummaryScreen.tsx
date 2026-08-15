@@ -1,36 +1,46 @@
-import type React from 'react'
-import { TOTAL_ROUNDS } from './constants'
-import type { DraftState, PickRecord } from './types'
-import { buildCsvRows, buildSlotTypeMap, slotKey, toCsvString } from './export/exportRosters'
+import type React from "react";
+import { TOTAL_ROUNDS } from "./constants";
+import type { DraftState, PickRecord } from "./types";
+import {
+  buildCsvRows,
+  buildSlotTypeMap,
+  slotKey,
+  toCsvString,
+} from "./export/exportRosters";
 
 // ── Slot label config ──────────────────────────────────────────────────────
 
-const SLOT_LABELS: Partial<Record<PickRecord['pickType'], React.ReactNode>> = {
-  franchise: <span className="summary-badge summary-badge--fp">★ Franchise</span>,
-  save:      <span className="summary-badge summary-badge--save">💾 Saved</span>,
-  pullback:  <span className="summary-badge summary-badge--pb">↩ Pullback</span>,
-}
+const SLOT_LABELS: Partial<Record<PickRecord["pickType"], React.ReactNode>> = {
+  franchise: (
+    <span className="summary-badge summary-badge--fp">★ Franchise</span>
+  ),
+  save: <span className="summary-badge summary-badge--save">💾 Saved</span>,
+  pullback: <span className="summary-badge summary-badge--pb">↩ Pullback</span>,
+};
 
 // ── SummaryScreen ──────────────────────────────────────────────────────────
 
 interface SummaryScreenProps {
-  state: DraftState
-  onBackToBoard: () => void
+  state: DraftState;
+  onBackToBoard: () => void;
 }
 
-export default function SummaryScreen({ state, onBackToBoard }: SummaryScreenProps) {
-  const { teams, pickHistory } = state
-  const typeMap = buildSlotTypeMap(teams, pickHistory)
+export default function SummaryScreen({
+  state,
+  onBackToBoard,
+}: SummaryScreenProps) {
+  const { teams, pickHistory } = state;
+  const typeMap = buildSlotTypeMap(teams, pickHistory);
 
   function handleExport() {
-    const csv = toCsvString(buildCsvRows(teams, pickHistory))
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'epl-draft-results.csv'
-    link.click()
-    URL.revokeObjectURL(url)
+    const csv = toCsvString(buildCsvRows(teams, pickHistory));
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "epl-draft-results.csv";
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -55,13 +65,16 @@ export default function SummaryScreen({ state, onBackToBoard }: SummaryScreenPro
               <div className="summary-card-header">{team.name}</div>
               <ol className="summary-roster" start={1}>
                 {Array.from({ length: TOTAL_ROUNDS }, (_, ri) => {
-                  const round = ri + 1
-                  const player = team.roster[round]
-                  const cellType = typeMap.get(slotKey(ti, round))
-                  const badge = cellType ? SLOT_LABELS[cellType] : null
+                  const round = ri + 1;
+                  const player = team.roster[round];
+                  const cellType = typeMap.get(slotKey(ti, round));
+                  const badge = cellType ? SLOT_LABELS[cellType] : null;
 
                   return (
-                    <li key={round} className={`summary-slot${cellType ? ` summary-slot--${cellType}` : ''}`}>
+                    <li
+                      key={round}
+                      className={`summary-slot${cellType ? ` summary-slot--${cellType}` : ""}`}
+                    >
                       <span className="summary-round">{round}</span>
                       {player ? (
                         <span className="summary-player">
@@ -73,7 +86,7 @@ export default function SummaryScreen({ state, onBackToBoard }: SummaryScreenPro
                         <span className="summary-empty">—</span>
                       )}
                     </li>
-                  )
+                  );
                 })}
               </ol>
             </div>
@@ -81,5 +94,5 @@ export default function SummaryScreen({ state, onBackToBoard }: SummaryScreenPro
         </div>
       </div>
     </div>
-  )
+  );
 }

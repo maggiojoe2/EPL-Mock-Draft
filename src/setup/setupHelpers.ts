@@ -1,7 +1,7 @@
-import type { Player, Team } from '../types'
-import { ROSTER_SLOTS } from '../constants'
-import type { RosterImport } from './csvParser'
-import { computeFranchiseTarget } from '../engine/aiSimulator'
+import type { Player, Team } from "../types";
+import { ROSTER_SLOTS } from "../constants";
+import type { RosterImport } from "./csvParser";
+import { computeFranchiseTarget } from "../engine/aiSimulator";
 
 // ── buildTeamsFromImport ───────────────────────────────────────────────────
 
@@ -20,21 +20,21 @@ export function buildTeamsFromImport(
 ): Team[] {
   // Build a fast lookup: normalised name → Player
   const poolByName = new Map<string, Player>(
-    playerPool.map(p => [p.name.toLowerCase(), p]),
-  )
+    playerPool.map((p) => [p.name.toLowerCase(), p]),
+  );
 
   return Array.from(rosterImport.entries()).map(([teamName, rows]) => {
-    const previousYearRoster: Player[] = []
-    const saveHistory = new Set<string>()
-    const franchiseEligibleIds = new Set<string>()
+    const previousYearRoster: Player[] = [];
+    const saveHistory = new Set<string>();
+    const franchiseEligibleIds = new Set<string>();
 
     for (const row of rows) {
-      const poolPlayer = poolByName.get(row.playerName.toLowerCase())
-      if (!poolPlayer) continue // not in active pool; skip gracefully
+      const poolPlayer = poolByName.get(row.playerName.toLowerCase());
+      if (!poolPlayer) continue; // not in active pool; skip gracefully
 
-      previousYearRoster.push(poolPlayer)
-      if (row.previouslySaved) saveHistory.add(poolPlayer.id)
-      if (row.franchiseEligible) franchiseEligibleIds.add(poolPlayer.id)
+      previousYearRoster.push(poolPlayer);
+      if (row.previouslySaved) saveHistory.add(poolPlayer.id);
+      if (row.franchiseEligible) franchiseEligibleIds.add(poolPlayer.id);
     }
 
     const team: Team = {
@@ -46,10 +46,10 @@ export function buildTeamsFromImport(
       franchiseEligibleIds,
       saveUsedThisDraft: false,
       lastAvailableRound: 15,
-    }
+    };
 
-    return team
-  })
+    return team;
+  });
 }
 
 // ── autoSelectFranchise ────────────────────────────────────────────────────
@@ -65,11 +65,11 @@ export function autoSelectFranchise(
 ): Team[] {
   return teams.map((team, i) => {
     // Skip user team and teams that already have a franchise player set.
-    if (i === userTeamIndex || team.franchisePlayer !== null) return team
+    if (i === userTeamIndex || team.franchisePlayer !== null) return team;
 
-    const target = computeFranchiseTarget(team)
-    if (!target) return team
+    const target = computeFranchiseTarget(team);
+    if (!target) return team;
 
-    return { ...team, franchisePlayer: target }
-  })
+    return { ...team, franchisePlayer: target };
+  });
 }

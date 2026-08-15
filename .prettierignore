@@ -1,0 +1,6 @@
+dist
+coverage
+test-data
+.scratch
+CONTEXT.md
+docs

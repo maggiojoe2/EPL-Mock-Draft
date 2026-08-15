@@ -1,24 +1,24 @@
-import type { Action, DraftState, PickRecord, Player, Team } from '../types'
+import type { Action, DraftState, PickRecord, Player, Team } from "../types";
 import {
   aiPickPlayer,
   computeExpectedAdp,
   computeSaveTarget,
   computeSaveTargetWithMistake,
   shouldPullback,
-} from './aiSimulator'
+} from "./aiSimulator";
 
-const TOTAL_ROUNDS = 16
+const TOTAL_ROUNDS = 16;
 
 // ── Pure helpers ───────────────────────────────────────────────────────────
 
 function removeFromPool(pool: Player[], player: Player): Player[] {
-  return pool.filter(p => p.id !== player.id)
+  return pool.filter((p) => p.id !== player.id);
 }
 
 function placeInRoster(team: Team, round: number, player: Player | null): Team {
-  const roster = [...team.roster]
-  roster[round] = player
-  return { ...team, roster }
+  const roster = [...team.roster];
+  roster[round] = player;
+  return { ...team, roster };
 }
 
 /** Return the next { round, teamIndex } after a pick, or null if draft is done. */
@@ -28,30 +28,27 @@ function nextPick(
   totalTeams: number,
 ): { round: number; teamIndex: number } | null {
   if (teamIndex < totalTeams - 1) {
-    return { round, teamIndex: teamIndex + 1 }
+    return { round, teamIndex: teamIndex + 1 };
   }
   if (round < TOTAL_ROUNDS) {
-    return { round: round + 1, teamIndex: 0 }
+    return { round: round + 1, teamIndex: 0 };
   }
-  return null // draft over
+  return null; // draft over
 }
 
 /** Count how many roster slots (rounds 1–16) are filled across all teams. */
 function totalPicksFilled(teams: Team[]): number {
   return teams.reduce((sum, team) => {
-    return (
-      sum +
-      team.roster.slice(1).filter(slot => slot !== null).length
-    )
-  }, 0)
+    return sum + team.roster.slice(1).filter((slot) => slot !== null).length;
+  }, 0);
 }
 
 /** Return true when the team has at least one unfilled slot >= fromRound. */
 function teamHasOpenNormalSlot(team: Team, fromRound: number): boolean {
   for (let r = fromRound; r <= TOTAL_ROUNDS; r++) {
-    if (team.roster[r] === null) return true
+    if (team.roster[r] === null) return true;
   }
-  return false
+  return false;
 }
 
 /** Advance the cursor via nextPick, skipping any team whose roster has no
@@ -63,11 +60,11 @@ function advanceCursor(
   teamIndex: number,
   teams: Team[],
 ): { round: number; teamIndex: number } | null {
-  let next = nextPick(round, teamIndex, teams.length)
-  while (next && !teamHasOpenNormalSlot(teams[next.teamIndex]!, next.round)) {
-    next = nextPick(next.round, next.teamIndex, teams.length)
+  let next = nextPick(round, teamIndex, teams.length);
+  while (next && !teamHasOpenNormalSlot(teams[next.teamIndex], next.round)) {
+    next = nextPick(next.round, next.teamIndex, teams.length);
   }
-  return next
+  return next;
 }
 
 /** Return the first unfilled roster slot >= fromRound for the given team.
@@ -75,11 +72,13 @@ function advanceCursor(
  *  pre-filled slots so it never overwrites them. */
 function nextNormalSlot(team: Team, fromRound: number): number {
   for (let r = fromRound; r <= TOTAL_ROUNDS; r++) {
-    if (team.roster[r] === null) return r
+    if (team.roster[r] === null) return r;
   }
   // Should never happen in a well-formed draft: the engine only reaches here
   // if the team's roster is already full, but the draft would be complete.
-  throw new Error(`No open normal slot for team "${team.name}" starting at round ${fromRound}`)
+  throw new Error(
+    `No open normal slot for team "${team.name}" starting at round ${fromRound}`,
+  );
 }
 
 /** Picks the first pullback candidate (options are ADP-sorted, best first)
@@ -96,13 +95,13 @@ function selectPullbackCandidate(
   round: number,
   teamCount: number,
 ): Player | null {
-  const saveTarget = computeSaveTarget(team, team.franchisePlayer)
-  const expectedAdp = computeExpectedAdp(round, teamPositionInOrder, teamCount)
+  const saveTarget = computeSaveTarget(team, team.franchisePlayer);
+  const expectedAdp = computeExpectedAdp(round, teamPositionInOrder, teamCount);
   for (const candidate of options) {
-    if (candidate.id === saveTarget?.id) continue
-    if (shouldPullback(candidate.adp, expectedAdp)) return candidate
+    if (candidate.id === saveTarget?.id) continue;
+    if (shouldPullback(candidate.adp, expectedAdp)) return candidate;
   }
-  return null
+  return null;
 }
 
 // ── Reaction helpers ───────────────────────────────────────────────────────
@@ -114,33 +113,40 @@ function buildReactionQueue(
   pickedPlayer: Player,
   pickingTeamIndex: number,
 ) {
-  const queue: DraftState['reactionQueue'] = []
+  const queue: DraftState["reactionQueue"] = [];
 
   for (let ti = 0; ti < state.teams.length; ti++) {
-    if (ti === pickingTeamIndex) continue
-    const team = state.teams[ti]!
-    const ownsPlayer = team.previousYearRoster.some(p => p.id === pickedPlayer.id)
-    if (!ownsPlayer) continue
+    if (ti === pickingTeamIndex) continue;
+    const team = state.teams[ti];
+    const ownsPlayer = team.previousYearRoster.some(
+      (p) => p.id === pickedPlayer.id,
+    );
+    if (!ownsPlayer) continue;
 
     // A reaction is only allowed when the team still has a back-slot ahead of
     // the current round (strictly greater, to avoid filling a slot the cursor
     // will visit as a normal pick this same round).
     const hasRoomForReaction =
-      team.lastAvailableRound > state.currentPick.round
+      team.lastAvailableRound > state.currentPick.round;
 
-    if (!hasRoomForReaction) continue
+    if (!hasRoomForReaction) continue;
 
     // Save check: player must be saveable (never saved by this team in the
     // real league, per saveHistory) and the team hasn't used its one save
     // this draft yet.
-    const isSaveable = !team.saveHistory.has(pickedPlayer.id) && !team.saveUsedThisDraft
+    const isSaveable =
+      !team.saveHistory.has(pickedPlayer.id) && !team.saveUsedThisDraft;
 
     // Pullback options: any other previous-year player still in the pool.
     // Sorted ascending by ADP so the AI's "highest-ADP" pick (opts[0]) and the
     // practice-mode modal both present the best remaining option first.
     const pullbackOptions = team.previousYearRoster
-      .filter(p => state.availablePool.some(ap => ap.id === p.id) && p.id !== pickedPlayer.id)
-      .sort((a, b) => a.adp - b.adp)
+      .filter(
+        (p) =>
+          state.availablePool.some((ap) => ap.id === p.id) &&
+          p.id !== pickedPlayer.id,
+      )
+      .sort((a, b) => a.adp - b.adp);
 
     if (isSaveable) {
       // A team with an unused save can save the picked player, pull back a
@@ -148,100 +154,113 @@ function buildReactionQueue(
       // reaction. Only one team reacts per pick (the player's sole owner),
       // so this is still a single queue entry.
       queue.push({
-        kind: 'save',
+        kind: "save",
         pickingTeamIndex,
         reactingTeamIndex: ti,
         player: pickedPlayer,
         pullbackOptions,
-      })
-      continue
+      });
+      continue;
     }
 
     // Save isn't available (already used, or this player was previously
     // saved) — offer pullback alone if any options remain.
     if (pullbackOptions.length > 0) {
       queue.push({
-        kind: 'pullback',
+        kind: "pullback",
         pickingTeamIndex,
         reactingTeamIndex: ti,
         pickedPlayer,
         pullbackOptions,
-      })
+      });
     }
   }
 
-  return queue
+  return queue;
 }
 
 // ── Queue / completion helpers ─────────────────────────────────────────────
 
-function dequeue(queue: DraftState['reactionQueue']): {
-  head: DraftState['pendingPrompt']
-  tail: DraftState['reactionQueue']
+function dequeue(queue: DraftState["reactionQueue"]): {
+  head: DraftState["pendingPrompt"];
+  tail: DraftState["reactionQueue"];
 } {
-  if (queue.length === 0) return { head: null, tail: [] }
-  const [head, ...tail] = queue
-  return { head: head!, tail }
+  if (queue.length === 0) return { head: null, tail: [] };
+  const [head, ...tail] = queue;
+  return { head: head, tail };
 }
 
 /** Shared tail logic for every reaction handler: dequeue next prompt, advance
  *  the pick cursor when all reactions are resolved, and check for completion. */
 function resolveReaction(
   state: DraftState,
-  teams: DraftState['teams'],
-): Pick<DraftState, 'currentPick' | 'pendingPrompt' | 'reactionQueue' | 'isDraftComplete'> {
-  const { head: pendingPrompt, tail: reactionQueue } = dequeue(state.reactionQueue)
+  teams: DraftState["teams"],
+): Pick<
+  DraftState,
+  "currentPick" | "pendingPrompt" | "reactionQueue" | "isDraftComplete"
+> {
+  const { head: pendingPrompt, tail: reactionQueue } = dequeue(
+    state.reactionQueue,
+  );
 
-  const { round, teamIndex } = state.currentPick
-  const next = pendingPrompt === null ? advanceCursor(round, teamIndex, teams) : null
+  const { round, teamIndex } = state.currentPick;
+  const next =
+    pendingPrompt === null ? advanceCursor(round, teamIndex, teams) : null;
 
-  const isDraftComplete = pendingPrompt === null && reactionQueue.length === 0 && next === null
+  const isDraftComplete =
+    pendingPrompt === null && reactionQueue.length === 0 && next === null;
 
   return {
     currentPick: next ?? state.currentPick,
     pendingPrompt,
     reactionQueue,
     isDraftComplete,
-  }
+  };
 }
 
 // ── Engine ─────────────────────────────────────────────────────────────────
 
 export function draftEngine(state: DraftState, action: Action): DraftState {
   switch (action.type) {
-    case 'PICK_PLAYER': {
-      const { player } = action
-      const { round, teamIndex } = state.currentPick
+    case "PICK_PLAYER": {
+      const { player } = action;
+      const { round, teamIndex } = state.currentPick;
 
-      const pickingTeam = state.teams[teamIndex]!
+      const pickingTeam = state.teams[teamIndex];
 
       // Slot for this normal pick: scan forward past any pre-filled slots
       // (saves or pullbacks placed there earlier in the draft).
-      const targetRound = nextNormalSlot(pickingTeam, round)
-      const updatedTeam = placeInRoster(pickingTeam, targetRound, player)
-      const teams = state.teams.map((t, i) => (i === teamIndex ? updatedTeam : t))
+      const targetRound = nextNormalSlot(pickingTeam, round);
+      const updatedTeam = placeInRoster(pickingTeam, targetRound, player);
+      const teams = state.teams.map((t, i) =>
+        i === teamIndex ? updatedTeam : t,
+      );
 
-      const availablePool = removeFromPool(state.availablePool, player)
+      const availablePool = removeFromPool(state.availablePool, player);
 
       const record: PickRecord = {
         round: targetRound,
         teamIndex,
         player,
-        pickType: 'normal',
-      }
-      const pickHistory = [...state.pickHistory, record]
+        pickType: "normal",
+      };
+      const pickHistory = [...state.pickHistory, record];
 
       // Build any reaction prompts triggered by this pick
       const reactionQueue = buildReactionQueue(
         { ...state, teams, availablePool },
         player,
         teamIndex,
-      )
+      );
 
-      const { head: pendingPrompt, tail: remainingQueue } = dequeue(reactionQueue)
+      const { head: pendingPrompt, tail: remainingQueue } =
+        dequeue(reactionQueue);
 
-      const next = reactionQueue.length === 0 ? advanceCursor(round, teamIndex, teams) : null
-      const isDraftComplete = reactionQueue.length === 0 && next === null
+      const next =
+        reactionQueue.length === 0
+          ? advanceCursor(round, teamIndex, teams)
+          : null;
+      const isDraftComplete = reactionQueue.length === 0 && next === null;
 
       return {
         ...state,
@@ -252,41 +271,59 @@ export function draftEngine(state: DraftState, action: Action): DraftState {
         pendingPrompt: pendingPrompt ?? null,
         reactionQueue: remainingQueue,
         isDraftComplete,
-      }
+      };
     }
 
-    case 'INVOKE_SAVE': {
-      if (!state.pendingPrompt || state.pendingPrompt.kind !== 'save') return state
-      const { pickingTeamIndex, reactingTeamIndex, player } = state.pendingPrompt
+    case "INVOKE_SAVE": {
+      if (!state.pendingPrompt || state.pendingPrompt.kind !== "save")
+        return state;
+      const { pickingTeamIndex, reactingTeamIndex, player } =
+        state.pendingPrompt;
 
       // A save blocks the original pick: remove the player from the picking team's
       // roster and strip the normal pick record from history.
-      const pickingTeam = state.teams[pickingTeamIndex]!
-      const blockedRound = pickingTeam.roster.findIndex(p => p?.id === player.id)
-      const unblockedPickingTeam = placeInRoster(pickingTeam, blockedRound, null)
+      const pickingTeam = state.teams[pickingTeamIndex];
+      const blockedRound = pickingTeam.roster.findIndex(
+        (p) => p?.id === player.id,
+      );
+      const unblockedPickingTeam = placeInRoster(
+        pickingTeam,
+        blockedRound,
+        null,
+      );
 
       // Place the player in the saving team's back slot.
-      const reactingTeam = state.teams[reactingTeamIndex]!
-      const targetRound = reactingTeam.lastAvailableRound
+      const reactingTeam = state.teams[reactingTeamIndex];
+      const targetRound = reactingTeam.lastAvailableRound;
       const updatedReactingTeam: Team = {
         ...placeInRoster(reactingTeam, targetRound, player),
         saveUsedThisDraft: true,
         lastAvailableRound: targetRound - 1,
-      }
+      };
 
       const teams = state.teams.map((t, i) => {
-        if (i === pickingTeamIndex) return unblockedPickingTeam
-        if (i === reactingTeamIndex) return updatedReactingTeam
-        return t
-      })
+        if (i === pickingTeamIndex) return unblockedPickingTeam;
+        if (i === reactingTeamIndex) return updatedReactingTeam;
+        return t;
+      });
 
       // Drop the voided normal pick from history; add the save record.
       const pickHistory = [
         ...state.pickHistory.filter(
-          r => !(r.teamIndex === pickingTeamIndex && r.player.id === player.id && r.pickType === 'normal'),
+          (r) =>
+            !(
+              r.teamIndex === pickingTeamIndex &&
+              r.player.id === player.id &&
+              r.pickType === "normal"
+            ),
         ),
-        { round: targetRound, teamIndex: reactingTeamIndex, player, pickType: 'save' as const },
-      ]
+        {
+          round: targetRound,
+          teamIndex: reactingTeamIndex,
+          player,
+          pickType: "save" as const,
+        },
+      ];
 
       // The save blocks the pick — cursor stays at the picking team's position
       // so they can pick again. Clear remaining reactions (they all referenced
@@ -299,47 +336,51 @@ export function draftEngine(state: DraftState, action: Action): DraftState {
         reactionQueue: [],
         currentPick: state.currentPick, // unchanged — picker tries again
         isDraftComplete: false,
-      }
+      };
     }
 
-    case 'DECLINE_SAVE': {
-      if (!state.pendingPrompt || state.pendingPrompt.kind !== 'save') return state
+    case "DECLINE_SAVE": {
+      if (!state.pendingPrompt || state.pendingPrompt.kind !== "save")
+        return state;
 
       return {
         ...state,
         ...resolveReaction(state, state.teams),
-      }
+      };
     }
 
-    case 'INVOKE_PULLBACK': {
+    case "INVOKE_PULLBACK": {
       // Reachable from either prompt kind: a plain pullback prompt, or a save
       // prompt where the team is choosing to pull back instead of saving.
       if (
         !state.pendingPrompt ||
-        (state.pendingPrompt.kind !== 'pullback' && state.pendingPrompt.kind !== 'save')
+        (state.pendingPrompt.kind !== "pullback" &&
+          state.pendingPrompt.kind !== "save")
       ) {
-        return state
+        return state;
       }
-      const { reactingTeamIndex } = state.pendingPrompt
-      const { pullbackPlayer } = action
+      const { reactingTeamIndex } = state.pendingPrompt;
+      const { pullbackPlayer } = action;
 
-      const reactingTeam = state.teams[reactingTeamIndex]!
-      const targetRound = reactingTeam.lastAvailableRound
+      const reactingTeam = state.teams[reactingTeamIndex];
+      const targetRound = reactingTeam.lastAvailableRound;
 
       const updatedTeam: Team = {
         ...placeInRoster(reactingTeam, targetRound, pullbackPlayer),
         lastAvailableRound: targetRound - 1,
-      }
-      const teams = state.teams.map((t, i) => (i === reactingTeamIndex ? updatedTeam : t))
-      const availablePool = removeFromPool(state.availablePool, pullbackPlayer)
+      };
+      const teams = state.teams.map((t, i) =>
+        i === reactingTeamIndex ? updatedTeam : t,
+      );
+      const availablePool = removeFromPool(state.availablePool, pullbackPlayer);
 
       const record: PickRecord = {
         round: targetRound,
         teamIndex: reactingTeamIndex,
         player: pullbackPlayer,
-        pickType: 'pullback',
-      }
-      const pickHistory = [...state.pickHistory, record]
+        pickType: "pullback",
+      };
+      const pickHistory = [...state.pickHistory, record];
 
       return {
         ...state,
@@ -347,39 +388,46 @@ export function draftEngine(state: DraftState, action: Action): DraftState {
         availablePool,
         pickHistory,
         ...resolveReaction(state, teams),
-      }
+      };
     }
 
-    case 'DECLINE_PULLBACK': {
-      if (!state.pendingPrompt || state.pendingPrompt.kind !== 'pullback') return state
+    case "DECLINE_PULLBACK": {
+      if (!state.pendingPrompt || state.pendingPrompt.kind !== "pullback")
+        return state;
 
       return {
         ...state,
         ...resolveReaction(state, state.teams),
-      }
+      };
     }
 
-    case 'ADVANCE_SIMULATION': {
-      if (state.isDraftComplete) return state
+    case "ADVANCE_SIMULATION": {
+      if (state.isDraftComplete) return state;
 
       if (state.pendingPrompt) {
         // Never auto-resolve a prompt the user must answer in practice mode.
         const isUserReaction =
-          state.mode === 'practice' &&
+          state.mode === "practice" &&
           state.userTeamIndex !== null &&
-          state.pendingPrompt.reactingTeamIndex === state.userTeamIndex
-        if (isUserReaction) return state
+          state.pendingPrompt.reactingTeamIndex === state.userTeamIndex;
+        if (isUserReaction) return state;
 
         // Resolve an AI team's reaction.
-        const prompt = state.pendingPrompt
-        const reactingTeam = state.teams[prompt.reactingTeamIndex]!
-        if (prompt.kind === 'save') {
+        const prompt = state.pendingPrompt;
+        const reactingTeam = state.teams[prompt.reactingTeamIndex];
+        if (prompt.kind === "save") {
           // Recomputed fresh (not cached) so it reflects the team's current
           // franchisePlayer and saveHistory rather than a value fixed at
           // draft start.
-          const saveTarget = computeSaveTargetWithMistake(reactingTeam, reactingTeam.franchisePlayer)
+          const saveTarget = computeSaveTargetWithMistake(
+            reactingTeam,
+            reactingTeam.franchisePlayer,
+          );
           if (saveTarget && saveTarget.id === prompt.player.id) {
-            return draftEngine(state, { type: 'INVOKE_SAVE', player: prompt.player })
+            return draftEngine(state, {
+              type: "INVOKE_SAVE",
+              player: prompt.player,
+            });
           }
           // Save declined — fall back to a value-based pullback evaluation
           // before giving up entirely.
@@ -389,11 +437,14 @@ export function draftEngine(state: DraftState, action: Action): DraftState {
             prompt.reactingTeamIndex + 1,
             reactingTeam.lastAvailableRound,
             state.teams.length,
-          )
+          );
           if (pullbackTarget) {
-            return draftEngine(state, { type: 'INVOKE_PULLBACK', pullbackPlayer: pullbackTarget })
+            return draftEngine(state, {
+              type: "INVOKE_PULLBACK",
+              pullbackPlayer: pullbackTarget,
+            });
           }
-          return draftEngine(state, { type: 'DECLINE_SAVE' })
+          return draftEngine(state, { type: "DECLINE_SAVE" });
         }
         // pullback
         const pullbackTarget = selectPullbackCandidate(
@@ -402,32 +453,49 @@ export function draftEngine(state: DraftState, action: Action): DraftState {
           prompt.reactingTeamIndex + 1,
           reactingTeam.lastAvailableRound,
           state.teams.length,
-        )
+        );
         if (pullbackTarget) {
-          return draftEngine(state, { type: 'INVOKE_PULLBACK', pullbackPlayer: pullbackTarget })
+          return draftEngine(state, {
+            type: "INVOKE_PULLBACK",
+            pullbackPlayer: pullbackTarget,
+          });
         }
-        return draftEngine(state, { type: 'DECLINE_PULLBACK' })
+        return draftEngine(state, { type: "DECLINE_PULLBACK" });
       }
 
-      const { teamIndex } = state.currentPick
+      const { teamIndex } = state.currentPick;
       // Don't advance past the user's turn in practice mode.
-      if (state.mode === 'practice' && teamIndex === state.userTeamIndex) return state
+      if (state.mode === "practice" && teamIndex === state.userTeamIndex)
+        return state;
 
       // Skip teams with no open normal slots (their roster is already complete via
       // franchise/save/pullback; a normal pick would throw or overwrite).
-      const currentTeam = state.teams[teamIndex]!
+      const currentTeam = state.teams[teamIndex];
       if (!teamHasOpenNormalSlot(currentTeam, state.currentPick.round)) {
-        const next = nextPick(state.currentPick.round, teamIndex, state.teams.length)
-        if (!next) return { ...state, isDraftComplete: totalPicksFilled(state.teams) === state.teams.length * TOTAL_ROUNDS }
-        return draftEngine({ ...state, currentPick: next }, { type: 'ADVANCE_SIMULATION' })
+        const next = nextPick(
+          state.currentPick.round,
+          teamIndex,
+          state.teams.length,
+        );
+        if (!next)
+          return {
+            ...state,
+            isDraftComplete:
+              totalPicksFilled(state.teams) ===
+              state.teams.length * TOTAL_ROUNDS,
+          };
+        return draftEngine(
+          { ...state, currentPick: next },
+          { type: "ADVANCE_SIMULATION" },
+        );
       }
 
-      const player = aiPickPlayer(state.availablePool)
-      if (!player) return state
-      return draftEngine(state, { type: 'PICK_PLAYER', player })
+      const player = aiPickPlayer(state.availablePool);
+      if (!player) return state;
+      return draftEngine(state, { type: "PICK_PLAYER", player });
     }
 
     default:
-      return state
+      return state;
   }
 }
