@@ -11,7 +11,7 @@ Net effect: ticket 04's tests pass (they construct `DraftState` directly with `c
 
 **Blocked by:** 04 (done), and should land after ticket 02's in-flight work on `reactionQueue.ts`'s callers settles, to avoid a merge collision — check `saveReducer.ts`/`pullbackReducer.ts`/`reactionQueue.ts` are stable before starting.
 
-**Status:** resolved
+**Status:** done
 
 - [x] A skip encountered by `resolveReaction`'s post-action cursor advance (not just `ADVANCE_SIMULATION`'s own top-level check) produces a `SKIP_TURN` `debugLog` entry, for both human and simulated actions
 - [x] Skip entries from this path appear in correct chronological order relative to the action that triggered the cursor advance
