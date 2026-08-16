@@ -101,7 +101,40 @@ export interface SkipLogEntry {
   reason: "no-open-slot";
 }
 
-export type LogEntry = PickLogEntry | SkipLogEntry;
+/** The four save/pullback reaction action types this entry can represent. */
+export type ReactionActionType =
+  | "INVOKE_SAVE"
+  | "DECLINE_SAVE"
+  | "INVOKE_PULLBACK"
+  | "DECLINE_PULLBACK";
+
+/** One `INVOKE_SAVE`/`DECLINE_SAVE`/`INVOKE_PULLBACK`/`DECLINE_PULLBACK`
+ *  action, human or simulated. For a simulated ("ai") reaction, also
+ *  captures the deterministic optimal-comparison point for that decision
+ *  kind — `computeSaveTarget` for a save decision (`INVOKE_SAVE`/
+ *  `DECLINE_SAVE`), the pullback evaluation's own no-mistake candidate for a
+ *  pullback decision (`INVOKE_PULLBACK`/`DECLINE_PULLBACK`) — whether the
+ *  chosen outcome diverged from it, and whether the underlying `isMistake()`
+ *  roll fired. `mistakeFired` is recorded independently of `diverged`: a
+ *  mistake can fire and still land on the optimal outcome by chance, and
+ *  that roll should still be visible rather than looking identical to a
+ *  clean no-mistake match. Human reactions carry none of the
+ *  optimal-comparison fields — there's no algorithmic reasoning to report
+ *  for a manual choice. */
+export interface ReactionLogEntry {
+  seq: number;
+  type: ReactionActionType;
+  round: number;
+  teamIndex: number;
+  actor: LogActor;
+  /** The player saved/pulled back; null for a decline. */
+  outcome: Player | null;
+  optimalOutcome?: Player | null;
+  diverged?: boolean;
+  mistakeFired?: boolean;
+}
+
+export type LogEntry = PickLogEntry | SkipLogEntry | ReactionLogEntry;
 
 export interface DraftState {
   mode: DraftMode;
@@ -134,10 +167,24 @@ export interface PickAiContext {
   noise: number;
 }
 
+/** Attached by `advanceSimulation` (never by the UI) when a save/pullback
+ *  reaction action represents a simulated team's decision, so the
+ *  save/pullback reducers can build the optimal-comparison fields on the
+ *  resulting `ReactionLogEntry` without recomputing "ai"-ness or the
+ *  decision's own optimal target themselves. */
+export interface ReactionAiContext {
+  optimalOutcome: Player | null;
+  mistakeFired: boolean;
+}
+
 export type Action =
   | { type: "PICK_PLAYER"; player: Player; aiContext?: PickAiContext }
-  | { type: "INVOKE_SAVE"; player: Player }
-  | { type: "DECLINE_SAVE" }
-  | { type: "INVOKE_PULLBACK"; pullbackPlayer: Player }
-  | { type: "DECLINE_PULLBACK" }
+  | { type: "INVOKE_SAVE"; player: Player; aiContext?: ReactionAiContext }
+  | { type: "DECLINE_SAVE"; aiContext?: ReactionAiContext }
+  | {
+      type: "INVOKE_PULLBACK";
+      pullbackPlayer: Player;
+      aiContext?: ReactionAiContext;
+    }
+  | { type: "DECLINE_PULLBACK"; aiContext?: ReactionAiContext }
   | { type: "ADVANCE_SIMULATION" };

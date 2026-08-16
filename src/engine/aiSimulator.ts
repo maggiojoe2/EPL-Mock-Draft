@@ -139,20 +139,45 @@ export function computeSaveTarget(
   return saveCandidates(team, franchiseTarget)[0] ?? null;
 }
 
+/** A save-target computation's mistake-affected result, alongside whether
+ *  the `isMistake()` roll that produced it actually fired — surfaced
+ *  separately from the resulting `target` so callers (the debug log, in
+ *  particular) can tell "a mistake fired but happened to land on the same
+ *  target anyway" apart from "no mistake fired". */
+export interface SaveDecision {
+  target: Player | null;
+  mistakeFired: boolean;
+}
+
 /**
  * Computes a team's current save target with mistake noise applied: on a
  * mistake draw, the next-best saveable candidate (by ADP) stands in for the
  * algorithm's top choice for this one decision. Used at the point a save
  * decision is actually made, so it never gets baked into `computeSaveTarget`
  * itself (which stays deterministic for callers like the swap computation).
+ * Returns the mistake roll's outcome alongside the target so callers don't
+ * need a second, redundant `isMistake()` draw to know whether it fired.
  */
+export function computeSaveDecision(
+  team: SaveTeam,
+  franchiseTarget: Player | null,
+): SaveDecision {
+  const candidates = saveCandidates(team, franchiseTarget);
+  if (candidates.length === 0) return { target: null, mistakeFired: false };
+  const mistakeFired = isMistake();
+  return {
+    target: mistakeFired ? (candidates[1] ?? candidates[0]) : candidates[0],
+    mistakeFired,
+  };
+}
+
+/** Thin wrapper over `computeSaveDecision` for callers that only need the
+ *  resulting target, not whether the mistake roll fired. */
 export function computeSaveTargetWithMistake(
   team: SaveTeam,
   franchiseTarget: Player | null,
 ): Player | null {
-  const candidates = saveCandidates(team, franchiseTarget);
-  if (candidates.length === 0) return null;
-  return isMistake() ? (candidates[1] ?? candidates[0]) : candidates[0];
+  return computeSaveDecision(team, franchiseTarget).target;
 }
 
 /**
@@ -169,6 +194,13 @@ export function computeExpectedAdp(
   return (round - 1) * teamCount + teamPositionInOrder;
 }
 
+/** A single pullback accept/decline call's mistake-affected result,
+ *  alongside whether the `isMistake()` roll that produced it fired. */
+export interface PullbackStepDecision {
+  result: boolean;
+  mistakeFired: boolean;
+}
+
 /**
  * Whether a pullback candidate is worth more than the normal pick the team
  * would otherwise get with the roster slot the pullback would consume: true
@@ -176,11 +208,24 @@ export function computeExpectedAdp(
  * mistake noise, which — since pullback is a live accept/decline call rather
  * than a choice among candidates — nudges the outcome to the wrong side of
  * the threshold for this one decision instead of substituting a candidate.
+ * Returns the mistake roll's outcome alongside the result so callers don't
+ * need a second, redundant `isMistake()` draw to know whether it fired.
  */
+export function computePullbackStepDecision(
+  candidateAdp: number,
+  expectedAdp: number,
+): PullbackStepDecision {
+  const optimal = candidateAdp < expectedAdp;
+  const mistakeFired = isMistake();
+  return { result: mistakeFired ? !optimal : optimal, mistakeFired };
+}
+
+/** Thin wrapper over `computePullbackStepDecision` for callers that only
+ *  need the resulting accept/decline call, not whether the mistake roll
+ *  fired. */
 export function shouldPullback(
   candidateAdp: number,
   expectedAdp: number,
 ): boolean {
-  const optimal = candidateAdp < expectedAdp;
-  return isMistake() ? !optimal : optimal;
+  return computePullbackStepDecision(candidateAdp, expectedAdp).result;
 }

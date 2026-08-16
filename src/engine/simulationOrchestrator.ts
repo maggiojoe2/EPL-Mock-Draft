@@ -1,12 +1,19 @@
-import type { Action, DraftState, LogEntry, Player, Team } from "../types";
+import type {
+  Action,
+  DraftState,
+  LogEntry,
+  Player,
+  ReactionAiContext,
+  Team,
+} from "../types";
 import { TOTAL_ROUNDS } from "../constants";
 import {
   aiPickPlayerWithNoise,
   bestByAdp,
   computeExpectedAdp,
+  computePullbackStepDecision,
+  computeSaveDecision,
   computeSaveTarget,
-  computeSaveTargetWithMistake,
-  shouldPullback,
 } from "./aiSimulator";
 import {
   advanceCursor,
@@ -16,27 +23,49 @@ import {
 
 // ── Pure helpers ───────────────────────────────────────────────────────────
 
-/** Picks the first pullback candidate (options are ADP-sorted, best first)
- *  worth pulling back per the round-cost value comparison, skipping the
- *  team's current save target — that player is handled entirely by the save
- *  branch and never independently evaluated for pullback in the same
- *  decision. `round` is the team's `lastAvailableRound` at the moment of the
- *  decision: the slot a pullback would consume. Returns null when no
- *  candidate clears the bar. */
-function selectPullbackCandidate(
+/** A pullback prompt's full evaluation: the actual (mistake-affected)
+ *  candidate to pull back, the deterministic (no-mistake) candidate that
+ *  would have been chosen, and whether any mistake roll fired while
+ *  evaluating candidates in order — independent of whether that roll ended
+ *  up changing the outcome. */
+export interface PullbackEvaluation {
+  chosen: Player | null;
+  optimal: Player | null;
+  mistakeFired: boolean;
+}
+
+/** Evaluates the pullback candidates (options are ADP-sorted, best first)
+ *  against the round-cost value comparison, skipping the team's current save
+ *  target — that player is handled entirely by the save branch and never
+ *  independently evaluated for pullback in the same decision. `round` is the
+ *  team's `lastAvailableRound` at the moment of the decision: the slot a
+ *  pullback would consume. `chosen`/`optimal` are null when no candidate
+ *  clears the bar (mistake-affected / deterministic, respectively). */
+function evaluatePullbackDecision(
   options: Player[],
   team: Team,
   teamPositionInOrder: number,
   round: number,
   teamCount: number,
-): Player | null {
+): PullbackEvaluation {
   const saveTarget = computeSaveTarget(team, team.franchisePlayer);
   const expectedAdp = computeExpectedAdp(round, teamPositionInOrder, teamCount);
-  for (const candidate of options) {
-    if (candidate.id === saveTarget?.id) continue;
-    if (shouldPullback(candidate.adp, expectedAdp)) return candidate;
+  const candidates = options.filter((c) => c.id !== saveTarget?.id);
+
+  let chosen: Player | null = null;
+  let mistakeFired = false;
+  for (const candidate of candidates) {
+    const step = computePullbackStepDecision(candidate.adp, expectedAdp);
+    if (step.mistakeFired) mistakeFired = true;
+    if (step.result) {
+      chosen = candidate;
+      break;
+    }
   }
-  return null;
+
+  const optimal = candidates.find((c) => c.adp < expectedAdp) ?? null;
+
+  return { chosen, optimal, mistakeFired };
 }
 
 /** Build the `debugLog` entry for a team skipped by `ADVANCE_SIMULATION`
@@ -78,48 +107,75 @@ export function advanceSimulation(
       // Recomputed fresh (not cached) so it reflects the team's current
       // franchisePlayer and saveHistory rather than a value fixed at
       // draft start.
-      const saveTarget = computeSaveTargetWithMistake(
+      const saveDecision = computeSaveDecision(
         reactingTeam,
         reactingTeam.franchisePlayer,
       );
-      if (saveTarget && saveTarget.id === prompt.player.id) {
+      // The deterministic (no-mistake) comparison point for the log — kept
+      // separate from `saveDecision.target` so a mistake that fires but
+      // lands on the same target is still visible as "mistake fired".
+      const optimalSaveTarget = computeSaveTarget(
+        reactingTeam,
+        reactingTeam.franchisePlayer,
+      );
+      const saveAiContext: ReactionAiContext = {
+        optimalOutcome: optimalSaveTarget,
+        mistakeFired: saveDecision.mistakeFired,
+      };
+      if (saveDecision.target && saveDecision.target.id === prompt.player.id) {
         return draftEngine(state, {
           type: "INVOKE_SAVE",
           player: prompt.player,
+          aiContext: saveAiContext,
         });
       }
       // Save declined — fall back to a value-based pullback evaluation
       // before giving up entirely.
-      const pullbackTarget = selectPullbackCandidate(
+      const pullbackEval = evaluatePullbackDecision(
         prompt.pullbackOptions,
         reactingTeam,
         prompt.reactingTeamIndex + 1,
         reactingTeam.lastAvailableRound,
         state.teams.length,
       );
-      if (pullbackTarget) {
+      if (pullbackEval.chosen) {
         return draftEngine(state, {
           type: "INVOKE_PULLBACK",
-          pullbackPlayer: pullbackTarget,
+          pullbackPlayer: pullbackEval.chosen,
+          aiContext: {
+            optimalOutcome: pullbackEval.optimal,
+            mistakeFired: pullbackEval.mistakeFired,
+          },
         });
       }
-      return draftEngine(state, { type: "DECLINE_SAVE" });
+      return draftEngine(state, {
+        type: "DECLINE_SAVE",
+        aiContext: saveAiContext,
+      });
     }
     // pullback
-    const pullbackTarget = selectPullbackCandidate(
+    const pullbackEval = evaluatePullbackDecision(
       prompt.pullbackOptions,
       reactingTeam,
       prompt.reactingTeamIndex + 1,
       reactingTeam.lastAvailableRound,
       state.teams.length,
     );
-    if (pullbackTarget) {
+    const pullbackAiContext: ReactionAiContext = {
+      optimalOutcome: pullbackEval.optimal,
+      mistakeFired: pullbackEval.mistakeFired,
+    };
+    if (pullbackEval.chosen) {
       return draftEngine(state, {
         type: "INVOKE_PULLBACK",
-        pullbackPlayer: pullbackTarget,
+        pullbackPlayer: pullbackEval.chosen,
+        aiContext: pullbackAiContext,
       });
     }
-    return draftEngine(state, { type: "DECLINE_PULLBACK" });
+    return draftEngine(state, {
+      type: "DECLINE_PULLBACK",
+      aiContext: pullbackAiContext,
+    });
   }
 
   const { teamIndex } = state.currentPick;

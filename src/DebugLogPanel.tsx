@@ -56,6 +56,13 @@ export default function DebugLogPanel({
 
 // ── Entry rendering ──────────────────────────────────────────────────────
 
+const REACTION_VERB: Record<string, string> = {
+  INVOKE_SAVE: "saved",
+  DECLINE_SAVE: "declined the save on",
+  INVOKE_PULLBACK: "pulled back",
+  DECLINE_PULLBACK: "declined the pullback on",
+};
+
 function DebugLogEntryRow({
   entry,
   teams,
@@ -64,10 +71,10 @@ function DebugLogEntryRow({
   teams: DraftState["teams"];
 }) {
   const teamName = teams[entry.teamIndex]?.name ?? `Team ${entry.teamIndex}`;
-  const actorBadge = entry.actor === "user" ? "👤" : "🤖";
 
   switch (entry.type) {
-    case "PICK_PLAYER":
+    case "PICK_PLAYER": {
+      const actorBadge = entry.actor === "user" ? "👤" : "🤖";
       return (
         <>
           <span className="debug-log-seq">#{entry.seq + 1}</span>
@@ -84,6 +91,48 @@ function DebugLogEntryRow({
                 : "✓ Matched best-by-ADP"}
             </span>
           )}
+        </>
+      );
+    }
+    case "INVOKE_SAVE":
+    case "DECLINE_SAVE":
+    case "INVOKE_PULLBACK":
+    case "DECLINE_PULLBACK": {
+      const actorBadge = entry.actor === "user" ? "👤" : "🤖";
+      const verb = REACTION_VERB[entry.type];
+      return (
+        <>
+          <span className="debug-log-seq">#{entry.seq + 1}</span>
+          <span className="debug-log-summary">
+            {actorBadge} Round {entry.round} · <strong>{teamName}</strong>{" "}
+            {verb}{" "}
+            {entry.outcome ? (
+              <strong>{entry.outcome.name}</strong>
+            ) : (
+              "nothing"
+            )}
+          </span>
+          {entry.actor === "ai" && (
+            <span
+              className={`debug-log-detail${entry.diverged ? " debug-log-detail--diverged" : ""}`}
+            >
+              {entry.diverged
+                ? `↪ Optimal choice would have been ${entry.optimalOutcome?.name ?? "nothing"}`
+                : "✓ Matched optimal choice"}
+              {entry.mistakeFired ? " (mistake roll fired)" : ""}
+            </span>
+          )}
+        </>
+      );
+    }
+    case "SKIP_TURN":
+      return (
+        <>
+          <span className="debug-log-seq">#{entry.seq + 1}</span>
+          <span className="debug-log-summary">
+            ⏭️ Round {entry.round} · <strong>{teamName}</strong> skipped —
+            no open slot
+          </span>
         </>
       );
     default:

@@ -96,7 +96,8 @@ describe("debugLog — simulated PICK_PLAYER", () => {
 
       expect(next.debugLog).toHaveLength(1);
       const entry = next.debugLog[0];
-      expect(entry.type).toBe("PICK_PLAYER");
+      if (entry.type !== "PICK_PLAYER")
+        throw new Error("expected a PICK_PLAYER entry");
       expect(entry.actor).toBe("ai");
       expect(entry.player).toEqual(b);
       expect(entry.optimalPlayer).toEqual(a);
