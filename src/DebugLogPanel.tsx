@@ -1,5 +1,6 @@
 import type { DraftState, LogEntry } from "./types";
 import { toDebugLogJson } from "./export/exportDebugLog";
+import { downloadFile } from "./export/downloadFile";
 
 // ── DebugLogPanel ────────────────────────────────────────────────────────
 //
@@ -21,14 +22,11 @@ export default function DebugLogPanel({
   onClose,
 }: DebugLogPanelProps) {
   function handleDownload() {
-    const json = toDebugLogJson(debugLog);
-    const blob = new Blob([json], { type: "application/json;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "epl-draft-debug-log.json";
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadFile(
+      toDebugLogJson(debugLog),
+      "application/json;charset=utf-8;",
+      "epl-draft-debug-log.json",
+    );
   }
 
   return (

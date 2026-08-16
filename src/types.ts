@@ -89,7 +89,19 @@ export interface PickLogEntry {
   noise?: number;
 }
 
-export type LogEntry = PickLogEntry;
+/** A team's turn skipped by `ADVANCE_SIMULATION` because it has no open
+ *  normal slot at the landing round (its roster is already complete via
+ *  franchise/save/pullback). No `actor` — this is a systemic scheduling
+ *  decision, not a human or simulated choice. */
+export interface SkipLogEntry {
+  seq: number;
+  type: "SKIP_TURN";
+  round: number;
+  teamIndex: number;
+  reason: "no-open-slot";
+}
+
+export type LogEntry = PickLogEntry | SkipLogEntry;
 
 export interface DraftState {
   mode: DraftMode;

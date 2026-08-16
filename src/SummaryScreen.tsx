@@ -3,6 +3,7 @@ import { TOTAL_ROUNDS } from "./constants";
 import type { DraftState, PickRecord } from "./types";
 import { buildCsvRows, toCsvString } from "./export/exportRosters";
 import { toDebugLogJson } from "./export/exportDebugLog";
+import { downloadFile } from "./export/downloadFile";
 import { buildSlotTypeMap, slotKey } from "./rosterSlotType";
 
 // ── Slot label config ──────────────────────────────────────────────────────
@@ -31,24 +32,15 @@ export default function SummaryScreen({
 
   function handleExport() {
     const csv = toCsvString(buildCsvRows(teams, pickHistory));
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "epl-draft-results.csv";
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadFile(csv, "text/csv;charset=utf-8;", "epl-draft-results.csv");
   }
 
   function handleExportLog() {
-    const json = toDebugLogJson(debugLog);
-    const blob = new Blob([json], { type: "application/json;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "epl-draft-debug-log.json";
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadFile(
+      toDebugLogJson(debugLog),
+      "application/json;charset=utf-8;",
+      "epl-draft-debug-log.json",
+    );
   }
 
   return (

@@ -1,4 +1,4 @@
-import type { Action, DraftState, Player, Team } from "../types";
+import type { Action, DraftState, LogEntry, Player, Team } from "../types";
 import { TOTAL_ROUNDS } from "../constants";
 import {
   aiPickPlayerWithNoise,
@@ -37,6 +37,16 @@ function selectPullbackCandidate(
     if (shouldPullback(candidate.adp, expectedAdp)) return candidate;
   }
   return null;
+}
+
+/** Build the `debugLog` entry for a team skipped by `ADVANCE_SIMULATION`
+ *  because it has no open normal slot at the landing round. */
+function buildSkipLogEntry(
+  seq: number,
+  round: number,
+  teamIndex: number,
+): LogEntry {
+  return { seq, type: "SKIP_TURN", round, teamIndex, reason: "no-open-slot" };
 }
 
 // ── Orchestration ────────────────────────────────────────────────────────
@@ -123,15 +133,34 @@ export function advanceSimulation(
   // post-pick cursor advance in `pickReducer.ts`.
   const currentTeam = state.teams[teamIndex];
   if (!teamHasOpenNormalSlot(currentTeam, state.currentPick.round)) {
-    const next = advanceCursor(state.currentPick.round, teamIndex, state.teams);
+    // The current team is always the first skip; `advanceCursor`'s `onSkip`
+    // reports any further teams it passes over while searching for a
+    // landing spot, so every skipped turn in this single
+    // `ADVANCE_SIMULATION` call gets its own chronologically-ordered entry.
+    const skipped: { round: number; teamIndex: number }[] = [
+      { round: state.currentPick.round, teamIndex },
+    ];
+    const next = advanceCursor(
+      state.currentPick.round,
+      teamIndex,
+      state.teams,
+      (round, teamIndex) => skipped.push({ round, teamIndex }),
+    );
+    const debugLog = [
+      ...state.debugLog,
+      ...skipped.map((s, i) =>
+        buildSkipLogEntry(state.debugLog.length + i, s.round, s.teamIndex),
+      ),
+    ];
     if (!next)
       return {
         ...state,
+        debugLog,
         isDraftComplete:
           totalPicksFilled(state.teams) === state.teams.length * TOTAL_ROUNDS,
       };
     return draftEngine(
-      { ...state, currentPick: next },
+      { ...state, debugLog, currentPick: next },
       { type: "ADVANCE_SIMULATION" },
     );
   }

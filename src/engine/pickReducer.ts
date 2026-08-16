@@ -65,14 +65,20 @@ export function teamHasOpenNormalSlot(team: Team, fromRound: number): boolean {
  *  This is the single "find the next team+round with an open slot" primitive
  *  for the engine: the AI-turn skip check in `simulationOrchestrator.ts`'s
  *  `ADVANCE_SIMULATION` handling calls this instead of keeping its own
- *  loop. */
+ *  loop. `onSkip`, when given, is notified of each team skipped along the
+ *  way — purely observational, it never affects which cursor is returned —
+ *  so `simulationOrchestrator.ts` can log a `SKIP_TURN` entry for every team
+ *  its single `ADVANCE_SIMULATION` call passes over, not just the one it
+ *  started from. */
 export function advanceCursor(
   round: number,
   teamIndex: number,
   teams: Team[],
+  onSkip?: (round: number, teamIndex: number) => void,
 ): { round: number; teamIndex: number } | null {
   let next = nextPick(round, teamIndex, teams.length);
   while (next && !teamHasOpenNormalSlot(teams[next.teamIndex], next.round)) {
+    onSkip?.(next.round, next.teamIndex);
     next = nextPick(next.round, next.teamIndex, teams.length);
   }
   return next;
