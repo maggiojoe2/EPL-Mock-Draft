@@ -205,6 +205,52 @@ export function withUserTeamIndexAfterMove(
   return userTeamIndex;
 }
 
+/** Move teams[from] to index `to` (arbitrary distance), shifting the teams
+ *  in between rather than swapping — the free-drop drag-and-drop path. */
+export function withTeamsReorderedTo(
+  teams: Team[],
+  from: number,
+  to: number,
+): Team[] {
+  if (
+    from < 0 ||
+    from >= teams.length ||
+    to < 0 ||
+    to >= teams.length ||
+    from === to
+  ) {
+    return teams;
+  }
+  const next = [...teams];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  return next;
+}
+
+/** Convert a drag-and-drop "gap" index (0..teams.length, gap i meaning "the
+ *  slot before row i") into the target index withTeamsReorderedTo expects,
+ *  accounting for the dragged row itself being removed before re-insertion. */
+export function dropGapToIndex(gap: number, from: number): number {
+  return gap > from ? gap - 1 : gap;
+}
+
+/** Keep userTeamIndex tracking the same team after a withTeamsReorderedTo move. */
+export function withUserTeamIndexAfterMoveTo(
+  userTeamIndex: number | null,
+  from: number,
+  to: number,
+): number | null {
+  if (userTeamIndex === null || from === to) return userTeamIndex;
+  if (userTeamIndex === from) return to;
+  if (from < to && userTeamIndex > from && userTeamIndex <= to) {
+    return userTeamIndex - 1;
+  }
+  if (to < from && userTeamIndex >= to && userTeamIndex < from) {
+    return userTeamIndex + 1;
+  }
+  return userTeamIndex;
+}
+
 export function withFranchisePlayerSet(
   teams: Team[],
   teamIndex: number,
@@ -407,6 +453,11 @@ export function useSetupState() {
     );
   }, []);
 
+  const moveTeamTo = useCallback((from: number, to: number) => {
+    setTeams((prev) => withTeamsReorderedTo(prev, from, to));
+    setUserTeamIndex((prev) => withUserTeamIndexAfterMoveTo(prev, from, to));
+  }, []);
+
   // ── Franchise player declaration ─────────────────────────────────────────
 
   const setFranchisePlayer = useCallback(
@@ -472,6 +523,7 @@ export function useSetupState() {
     togglePreviouslySaved,
     addPlayerToRoster,
     moveTeam,
+    moveTeamTo,
     setFranchisePlayer,
     searchAvailablePlayers: searchAvailablePlayersBound,
     buildDraftState,

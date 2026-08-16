@@ -37,6 +37,7 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
     togglePreviouslySaved,
     addPlayerToRoster,
     moveTeam,
+    moveTeamTo,
     setFranchisePlayer,
     searchAvailablePlayers,
     buildDraftState,
@@ -110,6 +111,7 @@ export default function SetupScreen({ onDraftStart }: SetupScreenProps) {
             mode={mode}
             userTeamIndex={userTeamIndex}
             onMoveTeam={moveTeam}
+            onMoveTeamTo={moveTeamTo}
           />
 
           <RosterStep

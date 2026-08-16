@@ -9,6 +9,9 @@ import {
   withPlayerAdded,
   withTeamsReordered,
   withUserTeamIndexAfterMove,
+  withTeamsReorderedTo,
+  withUserTeamIndexAfterMoveTo,
+  dropGapToIndex,
   withFranchisePlayerSet,
   computeValidationErrors,
   searchAvailablePlayers,
@@ -301,6 +304,100 @@ describe("withUserTeamIndexAfterMove", () => {
 
   it("leaves the user team index unchanged when unrelated to the swap", () => {
     expect(withUserTeamIndexAfterMove(5, 2, 1)).toBe(5);
+  });
+});
+
+describe("withTeamsReorderedTo", () => {
+  it("moves a team later in the list", () => {
+    const teams = [
+      makeTeam({ name: "A" }),
+      makeTeam({ name: "B" }),
+      makeTeam({ name: "C" }),
+      makeTeam({ name: "D" }),
+    ];
+    const result = withTeamsReorderedTo(teams, 0, 2);
+    expect(result.map((t) => t.name)).toEqual(["B", "C", "A", "D"]);
+  });
+
+  it("moves a team earlier in the list", () => {
+    const teams = [
+      makeTeam({ name: "A" }),
+      makeTeam({ name: "B" }),
+      makeTeam({ name: "C" }),
+      makeTeam({ name: "D" }),
+    ];
+    const result = withTeamsReorderedTo(teams, 3, 0);
+    expect(result.map((t) => t.name)).toEqual(["D", "A", "B", "C"]);
+  });
+
+  it("is a no-op when from equals to", () => {
+    const teams = [makeTeam({ name: "A" }), makeTeam({ name: "B" })];
+    const result = withTeamsReorderedTo(teams, 1, 1);
+    expect(result).toBe(teams);
+  });
+
+  it("is a no-op for an out-of-bounds from index", () => {
+    const teams = [makeTeam({ name: "A" }), makeTeam({ name: "B" })];
+    const result = withTeamsReorderedTo(teams, -1, 0);
+    expect(result).toBe(teams);
+  });
+
+  it("is a no-op for an out-of-bounds to index", () => {
+    const teams = [makeTeam({ name: "A" }), makeTeam({ name: "B" })];
+    const result = withTeamsReorderedTo(teams, 0, 5);
+    expect(result).toBe(teams);
+  });
+});
+
+describe("withUserTeamIndexAfterMoveTo", () => {
+  it("returns null unchanged when there is no user team", () => {
+    expect(withUserTeamIndexAfterMoveTo(null, 0, 2)).toBeNull();
+  });
+
+  it("follows the user's team when it was the one moved later", () => {
+    expect(withUserTeamIndexAfterMoveTo(0, 0, 2)).toBe(2);
+  });
+
+  it("follows the user's team when it was the one moved earlier", () => {
+    expect(withUserTeamIndexAfterMoveTo(3, 3, 0)).toBe(0);
+  });
+
+  it("shifts teams between the old and new position left when a team moves later", () => {
+    // A B C D -> move A(0) to 2 -> B C A D; team at old index 1 (B) is now at 0
+    expect(withUserTeamIndexAfterMoveTo(1, 0, 2)).toBe(0);
+    expect(withUserTeamIndexAfterMoveTo(2, 0, 2)).toBe(1);
+  });
+
+  it("shifts teams between the new and old position right when a team moves earlier", () => {
+    // A B C D -> move D(3) to 0 -> D A B C; team at old index 0 (A) is now at 1
+    expect(withUserTeamIndexAfterMoveTo(0, 3, 0)).toBe(1);
+    expect(withUserTeamIndexAfterMoveTo(2, 3, 0)).toBe(3);
+  });
+
+  it("leaves the user team index unchanged when unrelated to the move", () => {
+    expect(withUserTeamIndexAfterMoveTo(5, 0, 2)).toBe(5);
+  });
+
+  it("leaves the user team index unchanged when from equals to", () => {
+    expect(withUserTeamIndexAfterMoveTo(1, 2, 2)).toBe(1);
+  });
+});
+
+describe("dropGapToIndex", () => {
+  it("keeps the gap as the target index when dropping before the dragged row", () => {
+    expect(dropGapToIndex(0, 2)).toBe(0);
+  });
+
+  it("shifts the gap back by one when dropping after the dragged row", () => {
+    expect(dropGapToIndex(4, 2)).toBe(3);
+  });
+
+  it("is a no-op when dropping into the dragged row's own gap", () => {
+    expect(dropGapToIndex(2, 2)).toBe(2);
+  });
+
+  it("is a no-op when dropping into the gap directly after the dragged row", () => {
+    expect(dropGapToIndex(3, 2)).toBe(2);
   });
 });
 
