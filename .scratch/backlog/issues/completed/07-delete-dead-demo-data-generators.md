@@ -1,6 +1,6 @@
 # Issue 07 — Delete the dead demo-data generators
 
-Status: needs-triage
+Status: completed
 
 Source: architecture review 2026-08-15, candidate E (Strong / dead code)
 
@@ -19,3 +19,7 @@ Deletion test: removing it loses nothing — it's already unreachable. Free, zer
 good candidate to knock out first, ahead of the others in this batch.
 
 ## Comments
+
+Completed 2026-08-15: `makeDemoPlayers` and `makeDemoTeams` deleted from
+`src/engine/initDraft.ts` (commit 97eb4c4). Typecheck clean, all 165 tests
+pass, review found no findings.
