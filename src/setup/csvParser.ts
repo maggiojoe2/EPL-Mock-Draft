@@ -1,6 +1,15 @@
 import Papa from "papaparse";
 import type { Player } from "../types";
 
+// ── CSV column names ──────────────────────────────────────────────────────
+
+/** Single source of truth for the expected CSV column names, shown in error
+ *  messages and in the "Expected CSV column names" hint block. */
+export const CSV_COLUMNS = {
+  playerPool: "name, position, nfl_team, adp",
+  roster: "team_name, player_name, franchise_eligible, previously_saved",
+} as const;
+
 // ── Types ──────────────────────────────────────────────────────────────────
 
 export interface RosterRow {
