@@ -38,7 +38,7 @@ describe("toDebugLogJson", () => {
     ];
 
     const json = toDebugLogJson(debugLog);
-    const parsed = JSON.parse(json);
+    const parsed = JSON.parse(json) as LogEntry[];
 
     expect(parsed).toEqual(debugLog);
     expect(Array.isArray(parsed)).toBe(true);
@@ -62,7 +62,7 @@ describe("toDebugLogJson", () => {
       },
     ];
 
-    const parsed = JSON.parse(toDebugLogJson(debugLog));
+    const parsed = JSON.parse(toDebugLogJson(debugLog)) as LogEntry[];
     expect(parsed[0]).toEqual(debugLog[0]);
   });
 });

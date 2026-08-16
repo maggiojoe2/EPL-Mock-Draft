@@ -129,9 +129,7 @@ describe("debugLog — SAVE_TARGET_COMPUTED", () => {
       draftEngine(state, { type: "ADVANCE_SIMULATION" }),
     );
 
-    const entry = next.debugLog.find(
-      (e) => e.type === "SAVE_TARGET_COMPUTED",
-    );
+    const entry = next.debugLog.find((e) => e.type === "SAVE_TARGET_COMPUTED");
     expect(entry).toEqual({
       seq: 0,
       type: "SAVE_TARGET_COMPUTED",
@@ -194,7 +192,9 @@ describe("debugLog — SAVE_TARGET_COMPUTED", () => {
       target: best, // deterministic — computeSaveTarget never rolls a mistake
     });
     // Same team, two computations, two different resulting targets.
-    expect(saveTargetEntries[0].target).not.toEqual(saveTargetEntries[1].target);
+    expect(saveTargetEntries[0].target).not.toEqual(
+      saveTargetEntries[1].target,
+    );
   });
 
   it("appends entries in dispatch order, interleaved with the skip/pick/reaction entries around them", () => {

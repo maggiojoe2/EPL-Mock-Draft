@@ -15,5 +15,12 @@ export function buildSaveTargetLogEntry(
   purpose: SaveTargetPurpose,
   target: Player | null,
 ): LogEntry {
-  return { seq, type: "SAVE_TARGET_COMPUTED", round, teamIndex, purpose, target };
+  return {
+    seq,
+    type: "SAVE_TARGET_COMPUTED",
+    round,
+    teamIndex,
+    purpose,
+    target,
+  };
 }

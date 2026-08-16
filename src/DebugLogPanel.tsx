@@ -106,11 +106,7 @@ function DebugLogEntryRow({
           <span className="debug-log-summary">
             {actorBadge} Round {entry.round} · <strong>{teamName}</strong>{" "}
             {verb}{" "}
-            {entry.outcome ? (
-              <strong>{entry.outcome.name}</strong>
-            ) : (
-              "nothing"
-            )}
+            {entry.outcome ? <strong>{entry.outcome.name}</strong> : "nothing"}
           </span>
           {entry.actor === "ai" && (
             <span
@@ -130,8 +126,8 @@ function DebugLogEntryRow({
         <>
           <span className="debug-log-seq">#{entry.seq + 1}</span>
           <span className="debug-log-summary">
-            ⏭️ Round {entry.round} · <strong>{teamName}</strong> skipped —
-            no open slot
+            ⏭️ Round {entry.round} · <strong>{teamName}</strong> skipped — no
+            open slot
           </span>
         </>
       );
@@ -144,13 +140,9 @@ function DebugLogEntryRow({
         <>
           <span className="debug-log-seq">#{entry.seq + 1}</span>
           <span className="debug-log-summary">
-            🎯 Round {entry.round} · <strong>{teamName}</strong>'s save
-            target ({purposeLabel}):{" "}
-            {entry.target ? (
-              <strong>{entry.target.name}</strong>
-            ) : (
-              "none"
-            )}
+            🎯 Round {entry.round} · <strong>{teamName}</strong>'s save target (
+            {purposeLabel}):{" "}
+            {entry.target ? <strong>{entry.target.name}</strong> : "none"}
           </span>
         </>
       );

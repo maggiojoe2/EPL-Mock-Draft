@@ -103,10 +103,7 @@ export interface SkipLogEntry {
 
 /** The four save/pullback reaction action types this entry can represent. */
 export type ReactionActionType =
-  | "INVOKE_SAVE"
-  | "DECLINE_SAVE"
-  | "INVOKE_PULLBACK"
-  | "DECLINE_PULLBACK";
+  "INVOKE_SAVE" | "DECLINE_SAVE" | "INVOKE_PULLBACK" | "DECLINE_PULLBACK";
 
 /** One `INVOKE_SAVE`/`DECLINE_SAVE`/`INVOKE_PULLBACK`/`DECLINE_PULLBACK`
  *  action, human or simulated. For a simulated ("ai") reaction, also
@@ -156,10 +153,7 @@ export interface SaveTargetLogEntry {
 }
 
 export type LogEntry =
-  | PickLogEntry
-  | SkipLogEntry
-  | ReactionLogEntry
-  | SaveTargetLogEntry;
+  PickLogEntry | SkipLogEntry | ReactionLogEntry | SaveTargetLogEntry;
 
 export interface DraftState {
   mode: DraftMode;

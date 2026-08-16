@@ -27,9 +27,7 @@ function makeSavePromptState(player = makePlayer(0)): DraftState {
 
 /** Build a DraftState with a pending standalone pullback prompt for team 1
  *  reacting to team 0's pick of a player it can't save. */
-function makePullbackPromptState(
-  pullbackPlayer = makePlayer(99),
-): DraftState {
+function makePullbackPromptState(pullbackPlayer = makePlayer(99)): DraftState {
   const pickedPlayer = makePlayer(0);
   const ownerTeam = makeTeam({
     name: "Owner",
