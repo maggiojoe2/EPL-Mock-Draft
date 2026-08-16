@@ -1,4 +1,5 @@
 import type { DraftState, LogEntry } from "./types";
+import { toDebugLogJson } from "./export/exportDebugLog";
 
 // ── DebugLogPanel ────────────────────────────────────────────────────────
 //
@@ -19,10 +20,24 @@ export default function DebugLogPanel({
   teams,
   onClose,
 }: DebugLogPanelProps) {
+  function handleDownload() {
+    const json = toDebugLogJson(debugLog);
+    const blob = new Blob([json], { type: "application/json;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "epl-draft-debug-log.json";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <aside className="debug-log-panel">
       <div className="debug-log-header">
         <h3>🪵 Debug Log</h3>
+        <button className="btn-secondary" onClick={handleDownload}>
+          ⬇ Download JSON
+        </button>
         <button className="btn-secondary" onClick={onClose}>
           ✕ Close
         </button>
