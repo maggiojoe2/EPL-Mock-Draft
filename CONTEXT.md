@@ -12,7 +12,7 @@
 
 **Pick** — a single team's selection of one NFL player from the available pool during their turn.
 
-**Draft order** — the sequence in which teams pick each round. The same order repeats every round (non-snake). Set by the previous year's standings; manually adjustable before the draft.
+**Draft order** — the sequence in which teams pick each round. The same order repeats every round (non-snake). Set once per season from the prior season's results: the bottom 6 teams (by final standings) pick in reverse standings order (worst team picks first among them); the top 6 picks go to the teams that missed the playoffs, seeded by a compensation bracket among them — the bracket winner picks first overall, with the rest of that bracket seeding in behind. Manually adjustable before the draft. The app does not compute this order — it ships as the bundled default roster data for the season and can be overridden by uploading a different roster CSV.
 
 **Available pool** — the set of NFL players not yet selected in the current draft.
 
