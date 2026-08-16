@@ -188,9 +188,19 @@ describe("debugLog — simulated INVOKE_SAVE / DECLINE_SAVE", () => {
       draftEngine(state, { type: "ADVANCE_SIMULATION" }),
     );
 
-    expect(next.debugLog).toHaveLength(1);
+    // Ticket 03: the save-target recomputation that resolved this prompt is
+    // logged in its own entry, ahead of the reaction entry it fed into.
+    expect(next.debugLog).toHaveLength(2);
     expect(next.debugLog[0]).toEqual({
       seq: 0,
+      type: "SAVE_TARGET_COMPUTED",
+      round: 15,
+      teamIndex: 1,
+      purpose: "save-decision",
+      target,
+    });
+    expect(next.debugLog[1]).toEqual({
+      seq: 1,
       type: "INVOKE_SAVE",
       round: 15,
       teamIndex: 1,
@@ -235,9 +245,17 @@ describe("debugLog — simulated INVOKE_SAVE / DECLINE_SAVE", () => {
       draftEngine(state, { type: "ADVANCE_SIMULATION" }),
     );
 
-    expect(next.debugLog).toHaveLength(1);
+    expect(next.debugLog).toHaveLength(2);
     expect(next.debugLog[0]).toEqual({
       seq: 0,
+      type: "SAVE_TARGET_COMPUTED",
+      round: 15,
+      teamIndex: 1,
+      purpose: "save-decision",
+      target,
+    });
+    expect(next.debugLog[1]).toEqual({
+      seq: 1,
       type: "INVOKE_SAVE",
       round: 15,
       teamIndex: 1,
@@ -281,9 +299,30 @@ describe("debugLog — simulated INVOKE_SAVE / DECLINE_SAVE", () => {
       draftEngine(state, { type: "ADVANCE_SIMULATION" }),
     );
 
+    // Ticket 03: two save-target recomputations precede the reaction entry —
+    // the initial save-decision resolution, then the pullback-fallback's own
+    // exclusion check (both land on `trueTarget` here since it's the only
+    // saveable candidate on this roster).
+    expect(next.debugLog).toHaveLength(3);
+    expect(next.debugLog[0]).toEqual({
+      seq: 0,
+      type: "SAVE_TARGET_COMPUTED",
+      round: 15,
+      teamIndex: 1,
+      purpose: "save-decision",
+      target: trueTarget,
+    });
+    expect(next.debugLog[1]).toEqual({
+      seq: 1,
+      type: "SAVE_TARGET_COMPUTED",
+      round: 15,
+      teamIndex: 1,
+      purpose: "pullback-exclusion",
+      target: trueTarget,
+    });
     const entry = next.debugLog.find((e) => e.type === "DECLINE_SAVE");
     expect(entry).toEqual({
-      seq: 0,
+      seq: 2,
       type: "DECLINE_SAVE",
       round: 15,
       teamIndex: 1,
@@ -327,9 +366,30 @@ describe("debugLog — simulated INVOKE_SAVE / DECLINE_SAVE", () => {
       draftEngine(state, { type: "ADVANCE_SIMULATION" }),
     );
 
-    expect(next.debugLog).toHaveLength(1);
+    // Ticket 03: the mistake-affected save-decision resolution lands on
+    // `mistakeCandidate` (the mistake substitute), while the pullback
+    // fallback's exclusion check recomputes the target with no mistake
+    // applied — `target`, the deterministic best-by-ADP candidate — so the
+    // same team logs two different targets across the two computations.
+    expect(next.debugLog).toHaveLength(3);
     expect(next.debugLog[0]).toEqual({
       seq: 0,
+      type: "SAVE_TARGET_COMPUTED",
+      round: 15,
+      teamIndex: 1,
+      purpose: "save-decision",
+      target: mistakeCandidate,
+    });
+    expect(next.debugLog[1]).toEqual({
+      seq: 1,
+      type: "SAVE_TARGET_COMPUTED",
+      round: 15,
+      teamIndex: 1,
+      purpose: "pullback-exclusion",
+      target,
+    });
+    expect(next.debugLog[2]).toEqual({
+      seq: 2,
       type: "DECLINE_SAVE",
       round: 15,
       teamIndex: 1,
@@ -374,9 +434,19 @@ describe("debugLog — simulated INVOKE_PULLBACK / DECLINE_PULLBACK", () => {
       draftEngine(state, { type: "ADVANCE_SIMULATION" }),
     );
 
-    expect(next.debugLog).toHaveLength(1);
+    // Ticket 03: the pullback-exclusion save-target computation precedes
+    // the reaction entry.
+    expect(next.debugLog).toHaveLength(2);
     expect(next.debugLog[0]).toEqual({
       seq: 0,
+      type: "SAVE_TARGET_COMPUTED",
+      round: 15,
+      teamIndex: 1,
+      purpose: "pullback-exclusion",
+      target: saveTargetPlayer,
+    });
+    expect(next.debugLog[1]).toEqual({
+      seq: 1,
       type: "INVOKE_PULLBACK",
       round: 15,
       teamIndex: 1,
@@ -419,9 +489,17 @@ describe("debugLog — simulated INVOKE_PULLBACK / DECLINE_PULLBACK", () => {
       draftEngine(state, { type: "ADVANCE_SIMULATION" }),
     );
 
-    expect(next.debugLog).toHaveLength(1);
+    expect(next.debugLog).toHaveLength(2);
     expect(next.debugLog[0]).toEqual({
       seq: 0,
+      type: "SAVE_TARGET_COMPUTED",
+      round: 15,
+      teamIndex: 1,
+      purpose: "pullback-exclusion",
+      target: saveTargetPlayer,
+    });
+    expect(next.debugLog[1]).toEqual({
+      seq: 1,
       type: "INVOKE_PULLBACK",
       round: 15,
       teamIndex: 1,
@@ -463,9 +541,20 @@ describe("debugLog — simulated INVOKE_PULLBACK / DECLINE_PULLBACK", () => {
       draftEngine(state, { type: "ADVANCE_SIMULATION" }),
     );
 
-    expect(next.debugLog).toHaveLength(1);
+    // The team's only saveable candidate is `pullbackOption` itself, so the
+    // exclusion check's logged target *is* the offered pullback option —
+    // which is exactly why it's filtered out of the candidate list below.
+    expect(next.debugLog).toHaveLength(2);
     expect(next.debugLog[0]).toEqual({
       seq: 0,
+      type: "SAVE_TARGET_COMPUTED",
+      round: 15,
+      teamIndex: 1,
+      purpose: "pullback-exclusion",
+      target: pullbackOption,
+    });
+    expect(next.debugLog[1]).toEqual({
+      seq: 1,
       type: "DECLINE_PULLBACK",
       round: 15,
       teamIndex: 1,
@@ -511,9 +600,17 @@ describe("debugLog — simulated INVOKE_PULLBACK / DECLINE_PULLBACK", () => {
       draftEngine(state, { type: "ADVANCE_SIMULATION" }),
     );
 
-    expect(next.debugLog).toHaveLength(1);
+    expect(next.debugLog).toHaveLength(2);
     expect(next.debugLog[0]).toEqual({
       seq: 0,
+      type: "SAVE_TARGET_COMPUTED",
+      round: 15,
+      teamIndex: 1,
+      purpose: "pullback-exclusion",
+      target: saveTargetPlayer,
+    });
+    expect(next.debugLog[1]).toEqual({
+      seq: 1,
       type: "DECLINE_PULLBACK",
       round: 15,
       teamIndex: 1,

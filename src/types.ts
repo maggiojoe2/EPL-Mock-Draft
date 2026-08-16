@@ -134,7 +134,32 @@ export interface ReactionLogEntry {
   mistakeFired?: boolean;
 }
 
-export type LogEntry = PickLogEntry | SkipLogEntry | ReactionLogEntry;
+/** Why a team's save target was recomputed: excluding it from pullback
+ *  candidates (`selectPullbackCandidate`'s exclusion check), or resolving
+ *  whether an AI team's pending save prompt is accepted (mistake-affected). */
+export type SaveTargetPurpose = "pullback-exclusion" | "save-decision";
+
+/** A standalone record of a `computeSaveTarget`/`computeSaveTargetWithMistake`
+ *  call, independent of whether it ends up producing a save/pullback action.
+ *  Neither function's result is ever cached, so a team's save target can be
+ *  (and is) recomputed multiple times per prompt; each computation gets its
+ *  own entry so the log narrates every reconsideration, not just the ones
+ *  that led somewhere. No `actor` field — this isn't a decision by itself,
+ *  just an observed computation feeding into one. */
+export interface SaveTargetLogEntry {
+  seq: number;
+  type: "SAVE_TARGET_COMPUTED";
+  round: number;
+  teamIndex: number;
+  purpose: SaveTargetPurpose;
+  target: Player | null;
+}
+
+export type LogEntry =
+  | PickLogEntry
+  | SkipLogEntry
+  | ReactionLogEntry
+  | SaveTargetLogEntry;
 
 export interface DraftState {
   mode: DraftMode;

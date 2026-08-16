@@ -135,6 +135,26 @@ function DebugLogEntryRow({
           </span>
         </>
       );
+    case "SAVE_TARGET_COMPUTED": {
+      const purposeLabel =
+        entry.purpose === "save-decision"
+          ? "resolving its save prompt"
+          : "excluding it from pullback candidates";
+      return (
+        <>
+          <span className="debug-log-seq">#{entry.seq + 1}</span>
+          <span className="debug-log-summary">
+            🎯 Round {entry.round} · <strong>{teamName}</strong>'s save
+            target ({purposeLabel}):{" "}
+            {entry.target ? (
+              <strong>{entry.target.name}</strong>
+            ) : (
+              "none"
+            )}
+          </span>
+        </>
+      );
+    }
     default:
       return null;
   }

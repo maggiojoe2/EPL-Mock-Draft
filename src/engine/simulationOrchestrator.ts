@@ -3,6 +3,7 @@ import type {
   DraftState,
   Player,
   ReactionAiContext,
+  SaveTargetPurpose,
   Team,
 } from "../types";
 import { TOTAL_ROUNDS } from "../constants";
@@ -19,6 +20,7 @@ import {
   teamHasOpenNormalSlot,
   totalPicksFilled,
 } from "./pickReducer";
+import { buildSaveTargetLogEntry } from "./saveTargetLogEntry";
 import { buildSkipLogEntry } from "./skipLogEntry";
 
 // ── Pure helpers ───────────────────────────────────────────────────────────
@@ -32,6 +34,11 @@ export interface PullbackEvaluation {
   chosen: Player | null;
   optimal: Player | null;
   mistakeFired: boolean;
+  /** The team's current save target, excluded from the candidates below —
+   *  surfaced (rather than left as an internal-only computation) so the
+   *  caller can log this `computeSaveTarget` call independently of the
+   *  chosen/optimal pullback outcome it fed into. */
+  saveTarget: Player | null;
 }
 
 /** Evaluates the pullback candidates (options are ADP-sorted, best first)
@@ -65,7 +72,30 @@ function evaluatePullbackDecision(
 
   const optimal = candidates.find((c) => c.adp < expectedAdp) ?? null;
 
-  return { chosen, optimal, mistakeFired };
+  return { chosen, optimal, mistakeFired, saveTarget };
+}
+
+/** Appends a `SAVE_TARGET_COMPUTED` entry onto `state.debugLog`, returning
+ *  the updated state to dispatch through. Shared by every recompute site in
+ *  `advanceSimulation` — AI save-prompt resolution and both pullback
+ *  evaluations (the save-decline fallback and the standalone pullback
+ *  prompt) — so the entry shape and round/team accounting stay identical
+ *  regardless of why the target was recomputed. */
+function logSaveTarget(
+  state: DraftState,
+  reactingTeamIndex: number,
+  round: number,
+  purpose: SaveTargetPurpose,
+  target: Player | null,
+): DraftState {
+  const entry = buildSaveTargetLogEntry(
+    state.debugLog.length,
+    round,
+    reactingTeamIndex,
+    purpose,
+    target,
+  );
+  return { ...state, debugLog: [...state.debugLog, entry] };
 }
 
 // ── Orchestration ────────────────────────────────────────────────────────
@@ -101,6 +131,16 @@ export function advanceSimulation(
         reactingTeam,
         reactingTeam.franchisePlayer,
       );
+      // Logged in its own entry, independent of what INVOKE_SAVE/
+      // DECLINE_SAVE ends up recording — this narrates the save-target
+      // recomputation itself, not just its effect on the reaction outcome.
+      const stateAfterSaveTargetLog = logSaveTarget(
+        state,
+        prompt.reactingTeamIndex,
+        reactingTeam.lastAvailableRound,
+        "save-decision",
+        saveDecision.target,
+      );
       // The deterministic (no-mistake) comparison point for the log — kept
       // separate from `saveDecision.target` so a mistake that fires but
       // lands on the same target is still visible as "mistake fired".
@@ -113,7 +153,7 @@ export function advanceSimulation(
         mistakeFired: saveDecision.mistakeFired,
       };
       if (saveDecision.target && saveDecision.target.id === prompt.player.id) {
-        return draftEngine(state, {
+        return draftEngine(stateAfterSaveTargetLog, {
           type: "INVOKE_SAVE",
           player: prompt.player,
           aiContext: saveAiContext,
@@ -128,8 +168,15 @@ export function advanceSimulation(
         reactingTeam.lastAvailableRound,
         state.teams.length,
       );
+      const stateAfterPullbackLog = logSaveTarget(
+        stateAfterSaveTargetLog,
+        prompt.reactingTeamIndex,
+        reactingTeam.lastAvailableRound,
+        "pullback-exclusion",
+        pullbackEval.saveTarget,
+      );
       if (pullbackEval.chosen) {
-        return draftEngine(state, {
+        return draftEngine(stateAfterPullbackLog, {
           type: "INVOKE_PULLBACK",
           pullbackPlayer: pullbackEval.chosen,
           aiContext: {
@@ -138,7 +185,7 @@ export function advanceSimulation(
           },
         });
       }
-      return draftEngine(state, {
+      return draftEngine(stateAfterPullbackLog, {
         type: "DECLINE_SAVE",
         aiContext: saveAiContext,
       });
@@ -151,18 +198,25 @@ export function advanceSimulation(
       reactingTeam.lastAvailableRound,
       state.teams.length,
     );
+    const stateAfterPullbackLog = logSaveTarget(
+      state,
+      prompt.reactingTeamIndex,
+      reactingTeam.lastAvailableRound,
+      "pullback-exclusion",
+      pullbackEval.saveTarget,
+    );
     const pullbackAiContext: ReactionAiContext = {
       optimalOutcome: pullbackEval.optimal,
       mistakeFired: pullbackEval.mistakeFired,
     };
     if (pullbackEval.chosen) {
-      return draftEngine(state, {
+      return draftEngine(stateAfterPullbackLog, {
         type: "INVOKE_PULLBACK",
         pullbackPlayer: pullbackEval.chosen,
         aiContext: pullbackAiContext,
       });
     }
-    return draftEngine(state, {
+    return draftEngine(stateAfterPullbackLog, {
       type: "DECLINE_PULLBACK",
       aiContext: pullbackAiContext,
     });
