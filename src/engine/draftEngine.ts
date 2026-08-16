@@ -9,7 +9,7 @@ import { advanceSimulation } from "./simulationOrchestrator";
 export function draftEngine(state: DraftState, action: Action): DraftState {
   switch (action.type) {
     case "PICK_PLAYER":
-      return pickPlayer(state, action.player);
+      return pickPlayer(state, action.player, action.aiContext);
 
     case "INVOKE_SAVE":
       return invokeSave(state);

@@ -65,6 +65,32 @@ export type PendingPrompt = SavePrompt | PullbackPrompt;
 /** "practice" — user controls one team; "watch" — all 12 teams simulate. */
 export type DraftMode = "practice" | "watch";
 
+// ── Debug log ──────────────────────────────────────────────────────────────
+
+/** "user" — a human-dispatched decision. "ai" — a simulated team's decision. */
+export type LogActor = "user" | "ai";
+
+/** One `PICK_PLAYER` action, human or simulated. For a simulated ("ai") pick,
+ *  also captures the deterministic best-by-ADP comparison point: the
+ *  optimal player, whether the actual pick diverged from it, and (only when
+ *  it did) the Gaussian noise magnitude responsible. Human picks carry none
+ *  of the optimal-comparison fields — there's no algorithmic reasoning to
+ *  report for a manual choice. This is the first variant of what will grow
+ *  into a `LogEntry` union covering the rest of `Action` plus turn skips. */
+export interface PickLogEntry {
+  seq: number;
+  type: "PICK_PLAYER";
+  round: number;
+  teamIndex: number;
+  actor: LogActor;
+  player: Player;
+  optimalPlayer?: Player;
+  diverged?: boolean;
+  noise?: number;
+}
+
+export type LogEntry = PickLogEntry;
+
 export interface DraftState {
   mode: DraftMode;
   /** null in watch mode */
@@ -79,12 +105,25 @@ export interface DraftState {
    *  Reactions are resolved one at a time; this queue lets the engine
    *  handle multiple teams having reactions to the same pick. */
   reactionQueue: PendingPrompt[];
+  /** Append-only narrative of every decision the engine has processed this
+   *  draft, in dispatch order. Reset alongside the rest of `DraftState` when
+   *  a new draft starts; never persisted. */
+  debugLog: LogEntry[];
 }
 
 // ── Actions ────────────────────────────────────────────────────────────────
 
+/** Attached by `advanceSimulation` (never by the UI) when a `PICK_PLAYER`
+ *  action represents a simulated team's decision, so the pick reducer can
+ *  build the optimal-comparison fields on the resulting `PickLogEntry`
+ *  without recomputing or guessing at "ai"-ness from other state. */
+export interface PickAiContext {
+  optimalPlayer: Player | null;
+  noise: number;
+}
+
 export type Action =
-  | { type: "PICK_PLAYER"; player: Player }
+  | { type: "PICK_PLAYER"; player: Player; aiContext?: PickAiContext }
   | { type: "INVOKE_SAVE"; player: Player }
   | { type: "DECLINE_SAVE" }
   | { type: "INVOKE_PULLBACK"; pullbackPlayer: Player }

@@ -1,7 +1,8 @@
 import type { Action, DraftState, Player, Team } from "../types";
 import { TOTAL_ROUNDS } from "../constants";
 import {
-  aiPickPlayer,
+  aiPickPlayerWithNoise,
+  bestByAdp,
   computeExpectedAdp,
   computeSaveTarget,
   computeSaveTargetWithMistake,
@@ -135,7 +136,12 @@ export function advanceSimulation(
     );
   }
 
-  const player = aiPickPlayer(state.availablePool);
-  if (!player) return state;
-  return draftEngine(state, { type: "PICK_PLAYER", player });
+  const result = aiPickPlayerWithNoise(state.availablePool);
+  if (!result) return state;
+  const optimalPlayer = bestByAdp(state.availablePool);
+  return draftEngine(state, {
+    type: "PICK_PLAYER",
+    player: result.player,
+    aiContext: { optimalPlayer, noise: result.noise },
+  });
 }

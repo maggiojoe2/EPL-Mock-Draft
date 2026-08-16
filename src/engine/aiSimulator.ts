@@ -7,16 +7,27 @@ function gaussianNoise(): number {
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 }
 
-/** AI picks the best available player by ADP with Gaussian noise (σ = 5 ranks).
- *  Returns null if the pool is empty. */
-export function aiPickPlayer(pool: Player[]): Player | null {
+export interface AiPickResult {
+  player: Player;
+  /** The σ-scaled noise (Gaussian draw × 5, in ADP-rank units) actually
+   *  added to the winning player's ADP to produce its score — the same
+   *  units as the score comparison itself, so the debug log's "why" for a
+   *  divergence reads as the real rank shift rather than the pre-scale
+   *  Gaussian draw. */
+  noise: number;
+}
+
+/** AI picks the best available player by ADP with Gaussian noise (σ = 5 ranks),
+ *  also returning the scaled noise that produced the winning score. Returns
+ *  null if the pool is empty. */
+export function aiPickPlayerWithNoise(pool: Player[]): AiPickResult | null {
   if (pool.length === 0) return null;
-  const scored = pool.map((p) => ({
-    player: p,
-    score: p.adp + gaussianNoise() * 5,
-  }));
+  const scored = pool.map((p) => {
+    const noise = gaussianNoise() * 5;
+    return { player: p, noise, score: p.adp + noise };
+  });
   scored.sort((a, b) => a.score - b.score);
-  return scored[0].player;
+  return { player: scored[0].player, noise: scored[0].noise };
 }
 
 // ── Retention strategy (franchise / save / pullback) ───────────────────────
@@ -32,8 +43,10 @@ export function isMistake(): boolean {
   return Math.random() < MISTAKE_PROBABILITY;
 }
 
-/** Best (lowest-ADP) player in the list, or null if empty. */
-function bestByAdp(players: Player[]): Player | null {
+/** Best (lowest-ADP) player in the list, or null if empty. Reused as the
+ *  deterministic "optimal" comparison point wherever noisy AI decisions need
+ *  one — the debug log's pick entries included. */
+export function bestByAdp(players: Player[]): Player | null {
   if (players.length === 0) return null;
   return players.reduce((best, p) => (p.adp < best.adp ? p : best));
 }

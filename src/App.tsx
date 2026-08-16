@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { TOTAL_ROUNDS } from "./constants";
+import DebugLogPanel from "./DebugLogPanel";
 import { draftEngine } from "./engine/draftEngine";
 import { buildSlotTypeMap, slotKey } from "./rosterSlotType";
 import SetupScreen from "./setup/SetupScreen";
@@ -28,6 +29,9 @@ function DraftView({ initialState }: { initialState: DraftState }) {
   );
   // When true, show the summary screen; flips automatically on completion.
   const [showSummary, setShowSummary] = useState(false);
+  // Toggleable debug-log panel — opening/closing it never touches the
+  // simulation clock (the effect below doesn't depend on this state).
+  const [isLogOpen, setIsLogOpen] = useState(false);
   const simulatingRef = useRef(false);
   const [prevIsDraftComplete, setPrevIsDraftComplete] = useState(
     state.isDraftComplete,
@@ -119,12 +123,26 @@ function DraftView({ initialState }: { initialState: DraftState }) {
                 ? `🎯 Your pick — Round ${currentPick.round}`
                 : `⏳ Round ${currentPick.round} · ${teams[currentPick.teamIndex].name}`}
         </span>
+        <button
+          className="btn-secondary"
+          onClick={() => setIsLogOpen((open) => !open)}
+        >
+          🪵 {isLogOpen ? "Hide" : "Show"} Debug Log
+        </button>
         {isDraftComplete && (
           <button className="btn-primary" onClick={() => setShowSummary(true)}>
             📊 View Summary
           </button>
         )}
       </header>
+
+      {isLogOpen && (
+        <DebugLogPanel
+          debugLog={state.debugLog}
+          teams={teams}
+          onClose={() => setIsLogOpen(false)}
+        />
+      )}
 
       {isUserReactionPending && (
         <ReactionModal

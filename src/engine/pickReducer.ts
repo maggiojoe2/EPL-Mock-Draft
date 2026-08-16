@@ -1,4 +1,11 @@
-import type { DraftState, PickRecord, Player, Team } from "../types";
+import type {
+  DraftState,
+  LogEntry,
+  PickAiContext,
+  PickRecord,
+  Player,
+  Team,
+} from "../types";
 import { TOTAL_ROUNDS } from "../constants";
 import { buildReactionQueue, resolveReaction } from "./reactionQueue";
 
@@ -103,12 +110,56 @@ export function retractNormalPick(
   );
 }
 
+// ── Debug log ─────────────────────────────────────────────────────────────
+
+/** Build the `debugLog` entry for a `PICK_PLAYER` action. Presence of
+ *  `aiContext` — attached only by `advanceSimulation`, never by the UI — is
+ *  what distinguishes a simulated pick from a human one; the reducer doesn't
+ *  re-derive "ai"-ness from `state.mode`/`userTeamIndex` itself. */
+function buildPickLogEntry(
+  seq: number,
+  round: number,
+  teamIndex: number,
+  player: Player,
+  aiContext: PickAiContext | undefined,
+): LogEntry {
+  if (!aiContext) {
+    return {
+      seq,
+      type: "PICK_PLAYER",
+      round,
+      teamIndex,
+      actor: "user",
+      player,
+    };
+  }
+  const { optimalPlayer, noise } = aiContext;
+  const diverged = optimalPlayer !== null && optimalPlayer.id !== player.id;
+  return {
+    seq,
+    type: "PICK_PLAYER",
+    round,
+    teamIndex,
+    actor: "ai",
+    player,
+    optimalPlayer: optimalPlayer ?? undefined,
+    diverged,
+    ...(diverged ? { noise } : {}),
+  };
+}
+
 // ── PICK_PLAYER reducer ──────────────────────────────────────────────────
 
 /** Handle a normal pick: place the player in the picking team's next open
  *  normal slot, remove them from the pool, record the pick, and build/drain
- *  any reactions the pick triggers. */
-export function pickPlayer(state: DraftState, player: Player): DraftState {
+ *  any reactions the pick triggers. `aiContext` — present only when this
+ *  action was synthesized by `advanceSimulation` — drives the optimal-
+ *  comparison fields on the resulting debug-log entry. */
+export function pickPlayer(
+  state: DraftState,
+  player: Player,
+  aiContext?: PickAiContext,
+): DraftState {
   const { round, teamIndex } = state.currentPick;
   const pickingTeam = state.teams[teamIndex];
 
@@ -128,6 +179,15 @@ export function pickPlayer(state: DraftState, player: Player): DraftState {
   };
   const pickHistory = [...state.pickHistory, record];
 
+  const logEntry = buildPickLogEntry(
+    state.debugLog.length,
+    targetRound,
+    teamIndex,
+    player,
+    aiContext,
+  );
+  const debugLog = [...state.debugLog, logEntry];
+
   // Build any reaction prompts triggered by this pick.
   const reactionQueue = buildReactionQueue(
     { ...state, teams, availablePool },
@@ -140,6 +200,7 @@ export function pickPlayer(state: DraftState, player: Player): DraftState {
     teams,
     availablePool,
     pickHistory,
+    debugLog,
     ...resolveReaction({ ...state, reactionQueue }, teams, advanceCursor),
   };
 }

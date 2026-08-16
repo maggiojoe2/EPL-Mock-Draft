@@ -45,6 +45,7 @@ export function makeDraftState(
     pendingPrompt: null,
     isDraftComplete: false,
     reactionQueue: [],
+    debugLog: [],
     ...overrides,
   };
 }

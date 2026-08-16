@@ -31,5 +31,6 @@ export function initDraft(params: {
     pendingPrompt: null,
     isDraftComplete: false,
     reactionQueue: [],
+    debugLog: [],
   };
 }
