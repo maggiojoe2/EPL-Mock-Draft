@@ -11,13 +11,15 @@ Net effect: ticket 04's tests pass (they construct `DraftState` directly with `c
 
 **Blocked by:** 04 (done), and should land after ticket 02's in-flight work on `reactionQueue.ts`'s callers settles, to avoid a merge collision — check `saveReducer.ts`/`pullbackReducer.ts`/`reactionQueue.ts` are stable before starting.
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] A skip encountered by `resolveReaction`'s post-action cursor advance (not just `ADVANCE_SIMULATION`'s own top-level check) produces a `SKIP_TURN` `debugLog` entry, for both human and simulated actions
-- [ ] Skip entries from this path appear in correct chronological order relative to the action that triggered the cursor advance
-- [ ] Extend `advanceSimulation.test.ts` (or add a new test file) with a test that drives a full pick/reducer flow — not a hand-constructed `currentPick` — through a franchise-locked team's round-16 slot, asserting the resulting `debugLog` contains the `SKIP_TURN` entry
-- [ ] No change to the actual skip/cursor-advance logic itself — logging only
+- [x] A skip encountered by `resolveReaction`'s post-action cursor advance (not just `ADVANCE_SIMULATION`'s own top-level check) produces a `SKIP_TURN` `debugLog` entry, for both human and simulated actions
+- [x] Skip entries from this path appear in correct chronological order relative to the action that triggered the cursor advance
+- [x] Extend `advanceSimulation.test.ts` (or add a new test file) with a test that drives a full pick/reducer flow — not a hand-constructed `currentPick` — through a franchise-locked team's round-16 slot, asserting the resulting `debugLog` contains the `SKIP_TURN` entry
+- [x] No change to the actual skip/cursor-advance logic itself — logging only
 
 ## Comments
 
 Filed by `/implement 04` after `/code-review`'s spec sub-agent found the gap. See conversation for full analysis. Deliberately deferred rather than fixed immediately because `saveReducer.ts`, `pullbackReducer.ts`, `aiSimulator.ts`, `draftEngine.ts`, and `types.ts` were mid-edit, uncommitted, in a concurrent session working ticket 02 at the time this was filed — fixing this ticket touches three of the same files (`reactionQueue.ts`, `saveReducer.ts`, `pullbackReducer.ts`) and risked colliding with that in-flight work.
+
+Resolved once ticket 02 landed (commit `562f118`) and the tree was clean. Fix: `resolveReaction` now passes an `onSkip` callback into `advanceCursor`, collecting skips and appending `SKIP_TURN` entries to the `debugLog` it returns; its four call sites (`pickPlayer`, `declineSave`, `invokePullback`, `declinePullback`) now feed their already-updated `debugLog` into the `state` handed to `resolveReaction` so nothing is dropped. `buildSkipLogEntry` was hoisted into a shared `skipLogEntry.ts`. Two new tests in `debugLog.test.ts` drive a real two-team draft (no hand-constructed `currentPick`) through a franchise-locked round-16 skip — one via a human `PICK_PLAYER`, one via `ADVANCE_SIMULATION` (aiContext) — confirming the fix covers both actors. `/code-review`'s two-axis review (standards + spec) came back clean after a Prettier pass; committed as `fc973b4`.
