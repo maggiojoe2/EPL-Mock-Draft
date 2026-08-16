@@ -59,8 +59,7 @@ export function invokePullback(
     teams,
     availablePool,
     pickHistory,
-    debugLog,
-    ...resolveReaction(state, teams, advanceCursor),
+    ...resolveReaction({ ...state, debugLog }, teams, advanceCursor),
   };
 }
 
@@ -85,7 +84,6 @@ export function declinePullback(
 
   return {
     ...state,
-    debugLog,
-    ...resolveReaction(state, state.teams, advanceCursor),
+    ...resolveReaction({ ...state, debugLog }, state.teams, advanceCursor),
   };
 }

@@ -206,7 +206,10 @@ export function pickPlayer(
     teams,
     availablePool,
     pickHistory,
-    debugLog,
-    ...resolveReaction({ ...state, reactionQueue }, teams, advanceCursor),
+    ...resolveReaction(
+      { ...state, reactionQueue, debugLog },
+      teams,
+      advanceCursor,
+    ),
   };
 }

@@ -1,7 +1,6 @@
 import type {
   Action,
   DraftState,
-  LogEntry,
   Player,
   ReactionAiContext,
   Team,
@@ -20,6 +19,7 @@ import {
   teamHasOpenNormalSlot,
   totalPicksFilled,
 } from "./pickReducer";
+import { buildSkipLogEntry } from "./skipLogEntry";
 
 // ── Pure helpers ───────────────────────────────────────────────────────────
 
@@ -66,16 +66,6 @@ function evaluatePullbackDecision(
   const optimal = candidates.find((c) => c.adp < expectedAdp) ?? null;
 
   return { chosen, optimal, mistakeFired };
-}
-
-/** Build the `debugLog` entry for a team skipped by `ADVANCE_SIMULATION`
- *  because it has no open normal slot at the landing round. */
-function buildSkipLogEntry(
-  seq: number,
-  round: number,
-  teamIndex: number,
-): LogEntry {
-  return { seq, type: "SKIP_TURN", round, teamIndex, reason: "no-open-slot" };
 }
 
 // ── Orchestration ────────────────────────────────────────────────────────

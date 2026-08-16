@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { draftEngine } from "../draftEngine";
-import { makeDraftState, makePlayer } from "../testHelpers";
+import { makeDraftState, makePlayer, makeTeam } from "../testHelpers";
+import type { Player } from "../../types";
 
 // ── PICK_PLAYER — human (dispatched directly, no aiContext) ────────────────
 
@@ -106,5 +107,139 @@ describe("debugLog — simulated PICK_PLAYER", () => {
     } finally {
       randomSpy.mockRestore();
     }
+  });
+});
+
+// ── SKIP_TURN — via the real post-pick cursor advance ───────────────────────
+//
+// `resolveReaction`'s `advanceCursor` call (run after every PICK_PLAYER) is
+// what actually skips full teams during normal play, distinct from
+// `ADVANCE_SIMULATION`'s own defensive top-level check covered in
+// `advanceSimulation.test.ts`. These tests drive a real PICK_PLAYER dispatch
+// through the transition rather than hand-constructing `currentPick` already
+// parked on the skipped team, so they exercise the path a real draft takes.
+
+describe("debugLog — SKIP_TURN via resolveReaction's cursor advance", () => {
+  it("logs a skip when the post-pick cursor rolls into a franchise-locked team's full round-16", () => {
+    // Two-team draft. Team 0 is franchise-locked: rounds 1-15 filled by
+    // normal picks, round 16 pre-filled by its franchise player — no open
+    // slot ever. Team 1 has rounds 1-14 filled; round 15 is the pick this
+    // test dispatches, round 16 is open.
+    const franchisePlayer = makePlayer(900);
+    const teamZeroRoster: (Player | null)[] = Array.from(
+      { length: 17 },
+      () => null,
+    );
+    for (let r = 1; r <= 15; r++) teamZeroRoster[r] = makePlayer(r);
+    teamZeroRoster[16] = franchisePlayer;
+    const teamZero = makeTeam({
+      name: "Franchise Team",
+      roster: teamZeroRoster,
+      franchisePlayer,
+      lastAvailableRound: 15,
+    });
+
+    const teamOneRoster: (Player | null)[] = Array.from(
+      { length: 17 },
+      () => null,
+    );
+    for (let r = 1; r <= 14; r++) teamOneRoster[r] = makePlayer(r + 20);
+    const teamOne = makeTeam({
+      name: "Open Team",
+      roster: teamOneRoster,
+      lastAvailableRound: 16,
+    });
+
+    const finalPick = makePlayer(999);
+    const state = makeDraftState({
+      mode: "practice",
+      userTeamIndex: 1,
+      teams: [teamZero, teamOne],
+      availablePool: [finalPick],
+      currentPick: { round: 15, teamIndex: 1 },
+    });
+
+    const next = draftEngine(state, {
+      type: "PICK_PLAYER",
+      player: finalPick,
+    });
+
+    // The pick itself logs first; the cursor advance that follows must skip
+    // team 0's full round 16 and land on team 1's open round 16.
+    expect(next.debugLog).toEqual([
+      expect.objectContaining({
+        seq: 0,
+        type: "PICK_PLAYER",
+        round: 15,
+        teamIndex: 1,
+      }),
+      {
+        seq: 1,
+        type: "SKIP_TURN",
+        round: 16,
+        teamIndex: 0,
+        reason: "no-open-slot",
+      },
+    ]);
+    expect(next.currentPick).toEqual({ round: 16, teamIndex: 1 });
+  });
+
+  it("logs the same skip when the triggering pick is simulated (via ADVANCE_SIMULATION)", () => {
+    // Identical setup to the human case above, but driven through
+    // ADVANCE_SIMULATION in watch mode so the triggering PICK_PLAYER carries
+    // an aiContext — the skip logging must fire regardless of actor.
+    const franchisePlayer = makePlayer(900);
+    const teamZeroRoster: (Player | null)[] = Array.from(
+      { length: 17 },
+      () => null,
+    );
+    for (let r = 1; r <= 15; r++) teamZeroRoster[r] = makePlayer(r);
+    teamZeroRoster[16] = franchisePlayer;
+    const teamZero = makeTeam({
+      name: "Franchise Team",
+      roster: teamZeroRoster,
+      franchisePlayer,
+      lastAvailableRound: 15,
+    });
+
+    const teamOneRoster: (Player | null)[] = Array.from(
+      { length: 17 },
+      () => null,
+    );
+    for (let r = 1; r <= 14; r++) teamOneRoster[r] = makePlayer(r + 20);
+    const teamOne = makeTeam({
+      name: "Open Team",
+      roster: teamOneRoster,
+      lastAvailableRound: 16,
+    });
+
+    const finalPick = makePlayer(999);
+    const state = makeDraftState({
+      mode: "watch",
+      userTeamIndex: null,
+      teams: [teamZero, teamOne],
+      availablePool: [finalPick], // sole candidate — noise can't change the winner
+      currentPick: { round: 15, teamIndex: 1 },
+    });
+
+    const next = draftEngine(state, { type: "ADVANCE_SIMULATION" });
+
+    expect(next.debugLog).toEqual([
+      expect.objectContaining({
+        seq: 0,
+        type: "PICK_PLAYER",
+        round: 15,
+        teamIndex: 1,
+        actor: "ai",
+      }),
+      {
+        seq: 1,
+        type: "SKIP_TURN",
+        round: 16,
+        teamIndex: 0,
+        reason: "no-open-slot",
+      },
+    ]);
+    expect(next.currentPick).toEqual({ round: 16, teamIndex: 1 });
   });
 });

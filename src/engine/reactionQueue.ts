@@ -1,4 +1,5 @@
 import type { DraftState, Player, Team } from "../types";
+import { buildSkipLogEntry } from "./skipLogEntry";
 
 // ── Reaction helpers ───────────────────────────────────────────────────────
 
@@ -90,7 +91,14 @@ export function dequeue(queue: DraftState["reactionQueue"]): {
  *  the pick cursor when all reactions are resolved, and check for completion.
  *  `advanceCursor` is passed in rather than owned here — it stays defined
  *  alongside pick-sequencing until that logic is extracted in its own
- *  module. */
+ *  module.
+ *
+ *  This cursor advance is the path that actually skips full teams during
+ *  normal play (e.g. rolling from round 15 into round 16 past a
+ *  franchise-locked team) — it runs after every `PICK_PLAYER`/`INVOKE_SAVE`/
+ *  `DECLINE_SAVE`/`INVOKE_PULLBACK`/`DECLINE_PULLBACK`. `onSkip` collects a
+ *  `SKIP_TURN` `debugLog` entry for every team it passes over, the same way
+ *  `simulationOrchestrator.ts`'s defensive top-level skip check does. */
 export function resolveReaction(
   state: DraftState,
   teams: DraftState["teams"],
@@ -98,18 +106,35 @@ export function resolveReaction(
     round: number,
     teamIndex: number,
     teams: Team[],
+    onSkip?: (round: number, teamIndex: number) => void,
   ) => { round: number; teamIndex: number } | null,
 ): Pick<
   DraftState,
-  "currentPick" | "pendingPrompt" | "reactionQueue" | "isDraftComplete"
+  | "currentPick"
+  | "pendingPrompt"
+  | "reactionQueue"
+  | "isDraftComplete"
+  | "debugLog"
 > {
   const { head: pendingPrompt, tail: reactionQueue } = dequeue(
     state.reactionQueue,
   );
 
   const { round, teamIndex } = state.currentPick;
+  const skipped: { round: number; teamIndex: number }[] = [];
   const next =
-    pendingPrompt === null ? advanceCursor(round, teamIndex, teams) : null;
+    pendingPrompt === null
+      ? advanceCursor(round, teamIndex, teams, (r, t) =>
+          skipped.push({ round: r, teamIndex: t }),
+        )
+      : null;
+
+  const debugLog = [
+    ...state.debugLog,
+    ...skipped.map((s, i) =>
+      buildSkipLogEntry(state.debugLog.length + i, s.round, s.teamIndex),
+    ),
+  ];
 
   const isDraftComplete =
     pendingPrompt === null && reactionQueue.length === 0 && next === null;
@@ -119,5 +144,6 @@ export function resolveReaction(
     pendingPrompt,
     reactionQueue,
     isDraftComplete,
+    debugLog,
   };
 }

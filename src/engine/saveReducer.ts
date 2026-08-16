@@ -95,7 +95,6 @@ export function declineSave(
 
   return {
     ...state,
-    debugLog,
-    ...resolveReaction(state, state.teams, advanceCursor),
+    ...resolveReaction({ ...state, debugLog }, state.teams, advanceCursor),
   };
 }
