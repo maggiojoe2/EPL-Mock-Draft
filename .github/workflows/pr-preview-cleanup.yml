@@ -33,8 +33,13 @@ jobs:
           deployments=$(npx wrangler pages deployment list \
             --project-name="$CLOUDFLARE_PAGES_PROJECT" --json)
 
+          # `wrangler pages deployment list --json` returns a flat, raw
+          # array with PascalCase keys (Id, Branch, ...) — a different,
+          # simpler shape than the Cloudflare REST API's {"result": [...]}
+          # envelope with deployment_trigger.metadata.branch. Verified
+          # directly against a real deployment list, not the API docs.
           ids=$(printf '%s' "$deployments" | jq -r --arg branch "$BRANCH" \
-            '(.result // .)[] | select(.deployment_trigger.metadata.branch == $branch) | .id')
+            '.[] | select(.Branch == $branch) | .Id')
 
           if [ -z "$ids" ]; then
             echo "No preview deployments found for branch '$BRANCH' — nothing to clean up."
