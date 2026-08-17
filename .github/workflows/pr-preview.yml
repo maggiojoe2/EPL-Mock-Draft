@@ -8,6 +8,11 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  # wrangler-action's gitHubToken input needs this to register a GitHub
+  # Deployment for the run — without it, GitHub's own PR UI (the
+  # "Environments" sidebar / "this branch has been deployed" banner) never
+  # lights up, even though the Cloudflare deploy itself succeeds.
+  deployments: write
 
 concurrency:
   group: pr-preview-${{ github.event.pull_request.number }}
