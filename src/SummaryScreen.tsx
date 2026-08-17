@@ -2,6 +2,8 @@ import type React from "react";
 import { TOTAL_ROUNDS } from "./constants";
 import type { DraftState, PickRecord } from "./types";
 import { buildCsvRows, toCsvString } from "./export/exportRosters";
+import { toDebugLogJson } from "./export/exportDebugLog";
+import { downloadFile } from "./export/downloadFile";
 import { buildSlotTypeMap, slotKey } from "./rosterSlotType";
 
 // ── Slot label config ──────────────────────────────────────────────────────
@@ -25,18 +27,20 @@ export default function SummaryScreen({
   state,
   onBackToBoard,
 }: SummaryScreenProps) {
-  const { teams, pickHistory } = state;
+  const { teams, pickHistory, debugLog } = state;
   const typeMap = buildSlotTypeMap(teams, pickHistory);
 
   function handleExport() {
     const csv = toCsvString(buildCsvRows(teams, pickHistory));
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "epl-draft-results.csv";
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadFile(csv, "text/csv;charset=utf-8;", "epl-draft-results.csv");
+  }
+
+  function handleExportLog() {
+    downloadFile(
+      toDebugLogJson(debugLog),
+      "application/json;charset=utf-8;",
+      "epl-draft-debug-log.json",
+    );
   }
 
   return (
@@ -50,6 +54,9 @@ export default function SummaryScreen({
           </button>
           <button className="btn-primary" onClick={handleExport}>
             ⬇ Export CSV
+          </button>
+          <button className="btn-secondary" onClick={handleExportLog}>
+            🪵 Export Debug Log
           </button>
         </div>
       </header>

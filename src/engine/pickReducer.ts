@@ -1,4 +1,11 @@
-import type { DraftState, PickRecord, Player, Team } from "../types";
+import type {
+  DraftState,
+  LogEntry,
+  PickAiContext,
+  PickRecord,
+  Player,
+  Team,
+} from "../types";
 import { TOTAL_ROUNDS } from "../constants";
 import { buildReactionQueue, resolveReaction } from "./reactionQueue";
 
@@ -58,14 +65,20 @@ export function teamHasOpenNormalSlot(team: Team, fromRound: number): boolean {
  *  This is the single "find the next team+round with an open slot" primitive
  *  for the engine: the AI-turn skip check in `simulationOrchestrator.ts`'s
  *  `ADVANCE_SIMULATION` handling calls this instead of keeping its own
- *  loop. */
+ *  loop. `onSkip`, when given, is notified of each team skipped along the
+ *  way — purely observational, it never affects which cursor is returned —
+ *  so `simulationOrchestrator.ts` can log a `SKIP_TURN` entry for every team
+ *  its single `ADVANCE_SIMULATION` call passes over, not just the one it
+ *  started from. */
 export function advanceCursor(
   round: number,
   teamIndex: number,
   teams: Team[],
+  onSkip?: (round: number, teamIndex: number) => void,
 ): { round: number; teamIndex: number } | null {
   let next = nextPick(round, teamIndex, teams.length);
   while (next && !teamHasOpenNormalSlot(teams[next.teamIndex], next.round)) {
+    onSkip?.(next.round, next.teamIndex);
     next = nextPick(next.round, next.teamIndex, teams.length);
   }
   return next;
@@ -103,12 +116,56 @@ export function retractNormalPick(
   );
 }
 
+// ── Debug log ─────────────────────────────────────────────────────────────
+
+/** Build the `debugLog` entry for a `PICK_PLAYER` action. Presence of
+ *  `aiContext` — attached only by `advanceSimulation`, never by the UI — is
+ *  what distinguishes a simulated pick from a human one; the reducer doesn't
+ *  re-derive "ai"-ness from `state.mode`/`userTeamIndex` itself. */
+function buildPickLogEntry(
+  seq: number,
+  round: number,
+  teamIndex: number,
+  player: Player,
+  aiContext: PickAiContext | undefined,
+): LogEntry {
+  if (!aiContext) {
+    return {
+      seq,
+      type: "PICK_PLAYER",
+      round,
+      teamIndex,
+      actor: "user",
+      player,
+    };
+  }
+  const { optimalPlayer, noise } = aiContext;
+  const diverged = optimalPlayer !== null && optimalPlayer.id !== player.id;
+  return {
+    seq,
+    type: "PICK_PLAYER",
+    round,
+    teamIndex,
+    actor: "ai",
+    player,
+    optimalPlayer: optimalPlayer ?? undefined,
+    diverged,
+    ...(diverged ? { noise } : {}),
+  };
+}
+
 // ── PICK_PLAYER reducer ──────────────────────────────────────────────────
 
 /** Handle a normal pick: place the player in the picking team's next open
  *  normal slot, remove them from the pool, record the pick, and build/drain
- *  any reactions the pick triggers. */
-export function pickPlayer(state: DraftState, player: Player): DraftState {
+ *  any reactions the pick triggers. `aiContext` — present only when this
+ *  action was synthesized by `advanceSimulation` — drives the optimal-
+ *  comparison fields on the resulting debug-log entry. */
+export function pickPlayer(
+  state: DraftState,
+  player: Player,
+  aiContext?: PickAiContext,
+): DraftState {
   const { round, teamIndex } = state.currentPick;
   const pickingTeam = state.teams[teamIndex];
 
@@ -128,6 +185,15 @@ export function pickPlayer(state: DraftState, player: Player): DraftState {
   };
   const pickHistory = [...state.pickHistory, record];
 
+  const logEntry = buildPickLogEntry(
+    state.debugLog.length,
+    targetRound,
+    teamIndex,
+    player,
+    aiContext,
+  );
+  const debugLog = [...state.debugLog, logEntry];
+
   // Build any reaction prompts triggered by this pick.
   const reactionQueue = buildReactionQueue(
     { ...state, teams, availablePool },
@@ -140,6 +206,10 @@ export function pickPlayer(state: DraftState, player: Player): DraftState {
     teams,
     availablePool,
     pickHistory,
-    ...resolveReaction({ ...state, reactionQueue }, teams, advanceCursor),
+    ...resolveReaction(
+      { ...state, reactionQueue, debugLog },
+      teams,
+      advanceCursor,
+    ),
   };
 }

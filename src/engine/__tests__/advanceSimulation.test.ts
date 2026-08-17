@@ -627,6 +627,82 @@ describe("ADVANCE_SIMULATION full-team skip", () => {
       .slice(1)
       .filter((s) => s !== null).length;
     expect(filledSlotsAfter).toBe(16);
+    // The skip is recorded in the debug log
+    expect(next.debugLog).toEqual([
+      {
+        seq: 0,
+        type: "SKIP_TURN",
+        round: 16,
+        teamIndex: 0,
+        reason: "no-open-slot",
+      },
+    ]);
+  });
+
+  it("logs a skip entry for every team skipped before landing on one with an open slot", () => {
+    // Two full teams followed by one team with an open round-16 slot. The
+    // orchestrator's single ADVANCE_SIMULATION call must skip both full
+    // teams and log an entry for each before making the eventual pick.
+    const fullRoster: (Player | null)[] = Array.from(
+      { length: 17 },
+      () => null,
+    );
+    for (let r = 1; r <= 15; r++) fullRoster[r] = makePlayer(r);
+    fullRoster[16] = makePlayer(200);
+
+    const fullTeamA = makeTeam({
+      name: "Full Team A",
+      roster: fullRoster,
+      lastAvailableRound: 15,
+    });
+    const fullTeamB = makeTeam({
+      name: "Full Team B",
+      roster: fullRoster,
+      lastAvailableRound: 15,
+    });
+    const openRoster: (Player | null)[] = Array.from(
+      { length: 17 },
+      () => null,
+    );
+    for (let r = 1; r <= 15; r++) openRoster[r] = makePlayer(r + 20);
+    const openTeam = makeTeam({
+      name: "Open Team",
+      roster: openRoster,
+      lastAvailableRound: 16,
+    });
+
+    const pool = Array.from({ length: 10 }, (_, i) => makePlayer(i + 100));
+
+    const state = makeDraftState({
+      mode: "watch",
+      userTeamIndex: null,
+      teams: [fullTeamA, fullTeamB, openTeam],
+      availablePool: pool,
+      currentPick: { round: 16, teamIndex: 0 },
+    });
+
+    const next = draftEngine(state, { type: "ADVANCE_SIMULATION" });
+
+    const skips = next.debugLog.filter((e) => e.type === "SKIP_TURN");
+    expect(skips).toEqual([
+      {
+        seq: 0,
+        type: "SKIP_TURN",
+        round: 16,
+        teamIndex: 0,
+        reason: "no-open-slot",
+      },
+      {
+        seq: 1,
+        type: "SKIP_TURN",
+        round: 16,
+        teamIndex: 1,
+        reason: "no-open-slot",
+      },
+    ]);
+    // The pick that follows the skips comes chronologically after them.
+    const pickEntry = next.debugLog.find((e) => e.type === "PICK_PLAYER");
+    expect(pickEntry?.seq).toBe(2);
   });
 
   it("draft completes when the last open slot on a no-franchise team is filled", () => {

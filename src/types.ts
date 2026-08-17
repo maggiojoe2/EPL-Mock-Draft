@@ -65,6 +65,96 @@ export type PendingPrompt = SavePrompt | PullbackPrompt;
 /** "practice" — user controls one team; "watch" — all 12 teams simulate. */
 export type DraftMode = "practice" | "watch";
 
+// ── Debug log ──────────────────────────────────────────────────────────────
+
+/** "user" — a human-dispatched decision. "ai" — a simulated team's decision. */
+export type LogActor = "user" | "ai";
+
+/** One `PICK_PLAYER` action, human or simulated. For a simulated ("ai") pick,
+ *  also captures the deterministic best-by-ADP comparison point: the
+ *  optimal player, whether the actual pick diverged from it, and (only when
+ *  it did) the Gaussian noise magnitude responsible. Human picks carry none
+ *  of the optimal-comparison fields — there's no algorithmic reasoning to
+ *  report for a manual choice. This is the first variant of what will grow
+ *  into a `LogEntry` union covering the rest of `Action` plus turn skips. */
+export interface PickLogEntry {
+  seq: number;
+  type: "PICK_PLAYER";
+  round: number;
+  teamIndex: number;
+  actor: LogActor;
+  player: Player;
+  optimalPlayer?: Player;
+  diverged?: boolean;
+  noise?: number;
+}
+
+/** A team's turn skipped by `ADVANCE_SIMULATION` because it has no open
+ *  normal slot at the landing round (its roster is already complete via
+ *  franchise/save/pullback). No `actor` — this is a systemic scheduling
+ *  decision, not a human or simulated choice. */
+export interface SkipLogEntry {
+  seq: number;
+  type: "SKIP_TURN";
+  round: number;
+  teamIndex: number;
+  reason: "no-open-slot";
+}
+
+/** The four save/pullback reaction action types this entry can represent. */
+export type ReactionActionType =
+  "INVOKE_SAVE" | "DECLINE_SAVE" | "INVOKE_PULLBACK" | "DECLINE_PULLBACK";
+
+/** One `INVOKE_SAVE`/`DECLINE_SAVE`/`INVOKE_PULLBACK`/`DECLINE_PULLBACK`
+ *  action, human or simulated. For a simulated ("ai") reaction, also
+ *  captures the deterministic optimal-comparison point for that decision
+ *  kind — `computeSaveTarget` for a save decision (`INVOKE_SAVE`/
+ *  `DECLINE_SAVE`), the pullback evaluation's own no-mistake candidate for a
+ *  pullback decision (`INVOKE_PULLBACK`/`DECLINE_PULLBACK`) — whether the
+ *  chosen outcome diverged from it, and whether the underlying `isMistake()`
+ *  roll fired. `mistakeFired` is recorded independently of `diverged`: a
+ *  mistake can fire and still land on the optimal outcome by chance, and
+ *  that roll should still be visible rather than looking identical to a
+ *  clean no-mistake match. Human reactions carry none of the
+ *  optimal-comparison fields — there's no algorithmic reasoning to report
+ *  for a manual choice. */
+export interface ReactionLogEntry {
+  seq: number;
+  type: ReactionActionType;
+  round: number;
+  teamIndex: number;
+  actor: LogActor;
+  /** The player saved/pulled back; null for a decline. */
+  outcome: Player | null;
+  optimalOutcome?: Player | null;
+  diverged?: boolean;
+  mistakeFired?: boolean;
+}
+
+/** Why a team's save target was recomputed: excluding it from pullback
+ *  candidates (`selectPullbackCandidate`'s exclusion check), or resolving
+ *  whether an AI team's pending save prompt is accepted (mistake-affected). */
+export type SaveTargetPurpose = "pullback-exclusion" | "save-decision";
+
+/** A standalone record of a `computeSaveTarget`/`computeSaveTargetWithMistake`
+ *  call, independent of whether it ends up producing a save/pullback action.
+ *  Neither function's result is ever cached, so a team's save target can be
+ *  (and is) recomputed multiple times per prompt; each computation gets its
+ *  own entry so the log narrates every reconsideration, not just the ones
+ *  that led somewhere. No `actor` field — this isn't a decision by itself,
+ *  just an observed computation feeding into one. */
+export interface SaveTargetLogEntry {
+  seq: number;
+  type: "SAVE_TARGET_COMPUTED";
+  round: number;
+  teamIndex: number;
+  purpose: SaveTargetPurpose;
+  target: Player | null;
+}
+
+export type LogEntry =
+  PickLogEntry | SkipLogEntry | ReactionLogEntry | SaveTargetLogEntry;
+
 export interface DraftState {
   mode: DraftMode;
   /** null in watch mode */
@@ -79,14 +169,41 @@ export interface DraftState {
    *  Reactions are resolved one at a time; this queue lets the engine
    *  handle multiple teams having reactions to the same pick. */
   reactionQueue: PendingPrompt[];
+  /** Append-only narrative of every decision the engine has processed this
+   *  draft, in dispatch order. Reset alongside the rest of `DraftState` when
+   *  a new draft starts; never persisted. */
+  debugLog: LogEntry[];
 }
 
 // ── Actions ────────────────────────────────────────────────────────────────
 
+/** Attached by `advanceSimulation` (never by the UI) when a `PICK_PLAYER`
+ *  action represents a simulated team's decision, so the pick reducer can
+ *  build the optimal-comparison fields on the resulting `PickLogEntry`
+ *  without recomputing or guessing at "ai"-ness from other state. */
+export interface PickAiContext {
+  optimalPlayer: Player | null;
+  noise: number;
+}
+
+/** Attached by `advanceSimulation` (never by the UI) when a save/pullback
+ *  reaction action represents a simulated team's decision, so the
+ *  save/pullback reducers can build the optimal-comparison fields on the
+ *  resulting `ReactionLogEntry` without recomputing "ai"-ness or the
+ *  decision's own optimal target themselves. */
+export interface ReactionAiContext {
+  optimalOutcome: Player | null;
+  mistakeFired: boolean;
+}
+
 export type Action =
-  | { type: "PICK_PLAYER"; player: Player }
-  | { type: "INVOKE_SAVE"; player: Player }
-  | { type: "DECLINE_SAVE" }
-  | { type: "INVOKE_PULLBACK"; pullbackPlayer: Player }
-  | { type: "DECLINE_PULLBACK" }
+  | { type: "PICK_PLAYER"; player: Player; aiContext?: PickAiContext }
+  | { type: "INVOKE_SAVE"; player: Player; aiContext?: ReactionAiContext }
+  | { type: "DECLINE_SAVE"; aiContext?: ReactionAiContext }
+  | {
+      type: "INVOKE_PULLBACK";
+      pullbackPlayer: Player;
+      aiContext?: ReactionAiContext;
+    }
+  | { type: "DECLINE_PULLBACK"; aiContext?: ReactionAiContext }
   | { type: "ADVANCE_SIMULATION" };
