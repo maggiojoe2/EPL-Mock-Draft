@@ -1,6 +1,6 @@
 # Issue 09 — Enforce save/franchise position restriction
 
-Status: needs-triage
+Status: superseded — see .scratch/save-franchise-position-restriction/spec.md
 
 ## Problem
 
