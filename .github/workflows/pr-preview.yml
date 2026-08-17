@@ -1,0 +1,72 @@
+name: PR Preview Deploy
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: pr-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  CLOUDFLARE_PAGES_PROJECT: epl-mock-drafter
+
+jobs:
+  deploy-preview:
+    # Fork PRs get a read-only token under this event and no secrets access,
+    # so a deploy would fail anyway — skip them explicitly rather than let
+    # every fork PR run land on a red, confusing check.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+        env:
+          # Each preview deploys to its own Cloudflare Pages domain root,
+          # not a subpath, so the app's asset base must be "/" here (main's
+          # GitHub Pages deploy keeps the default "/EPL-Mock-Draft/" subpath).
+          PAGES_BASE_PATH: "/"
+
+      - name: Deploy to Cloudflare Pages
+        id: deploy
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=${{ env.CLOUDFLARE_PAGES_PROJECT }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Comment preview link
+        if: success()
+        uses: marocchino/sticky-pull-request-comment@v3
+        with:
+          header: pr-preview
+          message: |
+            ✅ **Preview deployed**
+
+            🔗 ${{ steps.deploy.outputs.pages-deployment-alias-url || steps.deploy.outputs.deployment-url }}
+
+            Commit: `${{ github.event.pull_request.head.sha }}`
+
+      - name: Comment deploy failure
+        if: failure()
+        uses: marocchino/sticky-pull-request-comment@v3
+        with:
+          header: pr-preview
+          message: |
+            ❌ **Preview deploy failed** for commit `${{ github.event.pull_request.head.sha }}`
+
+            See the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
