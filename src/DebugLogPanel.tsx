@@ -87,7 +87,7 @@ function DebugLogEntryRow({
               className={`debug-log-detail${entry.diverged ? " debug-log-detail--diverged" : ""}`}
             >
               {entry.diverged
-                ? `↪ Best-by-ADP would have been ${entry.optimalPlayer.name} (noise ${entry.noise?.toFixed(2)})`
+                ? `↪ Best-by-ADP would have been ${entry.optimalPlayer.name} (ADP ${entry.optimalPlayer.adp}) — picked at ADP ${entry.player.adp}, noise ${entry.noise?.toFixed(2)}`
                 : "✓ Matched best-by-ADP"}
             </span>
           )}
