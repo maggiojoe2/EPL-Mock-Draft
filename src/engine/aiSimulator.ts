@@ -68,6 +68,32 @@ export function conflictsWithFranchisePosition(
   );
 }
 
+/** Why `candidate` isn't offered as a save to `team` when it's the sole
+ *  reaction option a pullback-only prompt renders — one reason per
+ *  eligibility check in `buildReactionQueue`'s `isSaveable`, checked in the
+ *  same order (`saveHistory`, then `saveUsedThisDraft`, then franchise
+ *  position) so the two never drift. `null` when the player would in fact
+ *  be saveable (the caller only reaches for this when it already isn't). */
+export type SaveIneligibleReason =
+  | "already-used"
+  | "previously-saved"
+  | "franchise-position";
+
+type SaveEligibilityTeam = Pick<
+  Team,
+  "saveHistory" | "saveUsedThisDraft" | "franchisePlayer"
+>;
+
+export function saveIneligibleReason(
+  team: SaveEligibilityTeam,
+  candidate: Player,
+): SaveIneligibleReason | null {
+  if (team.saveHistory.has(candidate.id)) return "previously-saved";
+  if (team.saveUsedThisDraft) return "already-used";
+  if (conflictsWithFranchisePosition(team, candidate)) return "franchise-position";
+  return null;
+}
+
 type FranchiseTeam = Pick<
   Team,
   "previousYearRoster" | "franchiseEligibleIds" | "saveHistory"

@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { TOTAL_ROUNDS } from "./constants";
 import DebugLogPanel from "./DebugLogPanel";
-import { conflictsWithFranchisePosition } from "./engine/aiSimulator";
+import {
+  saveIneligibleReason,
+  type SaveIneligibleReason,
+} from "./engine/aiSimulator";
 import { draftEngine } from "./engine/draftEngine";
 import { buildSlotTypeMap, slotKey } from "./rosterSlotType";
 import SetupScreen from "./setup/SetupScreen";
@@ -414,10 +417,17 @@ function ReactionModal({
     );
   }
 
-  const franchisePlayer = reactingTeam.franchisePlayer;
-  const positionBlocked =
-    franchisePlayer !== null &&
-    conflictsWithFranchisePosition(reactingTeam, prompt.pickedPlayer);
+  // A pullback-only prompt always means the save was ineligible for one of
+  // three reasons (buildReactionQueue only reaches here when isSaveable is
+  // false) — surfaced here so a decline never reads as "the save vanished"
+  // when it was actually blocked (already used, real-league history, or the
+  // franchise-position rule) rather than lost.
+  const reason = saveIneligibleReason(reactingTeam, prompt.pickedPlayer);
+  const reasonText: Record<SaveIneligibleReason, string> = {
+    "already-used": `${reactingTeam.name} has already used its one save this draft.`,
+    "previously-saved": `${reactingTeam.name} already saved ${prompt.pickedPlayer.name} in a past league season, so they can't save them again.`,
+    "franchise-position": `${reactingTeam.name} can't save ${prompt.pickedPlayer.name} — ${prompt.pickedPlayer.position} is already locked in by your franchise player, ${reactingTeam.franchisePlayer?.name}.`,
+  };
 
   return (
     <div className="modal-overlay">
@@ -428,13 +438,7 @@ function ReactionModal({
           <strong>{prompt.pickedPlayer.name}</strong> from your previous-year
           roster. That pick stands.
         </p>
-        {positionBlocked && (
-          <p>
-            {reactingTeam.name} can't save {prompt.pickedPlayer.name} —{" "}
-            {prompt.pickedPlayer.position} is already locked in by your
-            franchise player, {franchisePlayer.name}.
-          </p>
-        )}
+        {reason && <p>{reasonText[reason]}</p>}
         <p>Pull back a different previous-year player instead?</p>
         <ul className="pullback-options">
           {prompt.pullbackOptions.map((p) => (

@@ -5,6 +5,7 @@ import {
   computeSaveTarget,
   computeSaveTargetWithMistake,
   conflictsWithFranchisePosition,
+  saveIneligibleReason,
   shouldPullback,
 } from "../aiSimulator";
 import type { Player } from "../../types";
@@ -300,6 +301,78 @@ describe("conflictsWithFranchisePosition", () => {
     expect(conflictsWithFranchisePosition({ franchisePlayer }, candidate)).toBe(
       false,
     );
+  });
+});
+
+// ── saveIneligibleReason ─────────────────────────────────────────────────────
+// Regression coverage for the bug where a pullback-only prompt (i.e. a save
+// blocked for a reason other than the franchise-position rule) gave no
+// on-screen explanation, reading as "my save disappeared" after a decline
+// rather than "this player specifically isn't saveable."
+
+describe("saveIneligibleReason", () => {
+  const baseTeam = {
+    saveHistory: new Set<string>(),
+    saveUsedThisDraft: false,
+    franchisePlayer: null as Player | null,
+  };
+
+  it("is null when the candidate is in fact saveable", () => {
+    const candidate = makePlayer("Candidate", 1, "RB");
+    expect(saveIneligibleReason(baseTeam, candidate)).toBeNull();
+  });
+
+  it("is 'already-used' when the team has used its one save this draft", () => {
+    const candidate = makePlayer("Candidate", 1, "RB");
+    expect(
+      saveIneligibleReason({ ...baseTeam, saveUsedThisDraft: true }, candidate),
+    ).toBe("already-used");
+  });
+
+  it("is 'previously-saved' when the player is in the team's saveHistory", () => {
+    const candidate = makePlayer("Candidate", 1, "RB");
+    expect(
+      saveIneligibleReason(
+        { ...baseTeam, saveHistory: new Set([candidate.id]) },
+        candidate,
+      ),
+    ).toBe("previously-saved");
+  });
+
+  it("is 'franchise-position' when the candidate shares the franchise player's position", () => {
+    const franchisePlayer = makePlayer("Franchise", 1, "QB");
+    const candidate = makePlayer("Candidate", 2, "QB");
+    expect(
+      saveIneligibleReason({ ...baseTeam, franchisePlayer }, candidate),
+    ).toBe("franchise-position");
+  });
+
+  it("checks reasons in the same precedence as buildReactionQueue's isSaveable", () => {
+    // isSaveable checks `!saveHistory.has(...) && !saveUsedThisDraft && ...`,
+    // in that order — so previously-saved wins over already-used, which wins
+    // over franchise-position.
+    const franchisePlayer = makePlayer("Franchise", 1, "QB");
+    const candidate = makePlayer("Candidate", 2, "QB");
+    expect(
+      saveIneligibleReason(
+        {
+          saveHistory: new Set([candidate.id]),
+          saveUsedThisDraft: true,
+          franchisePlayer,
+        },
+        candidate,
+      ),
+    ).toBe("previously-saved");
+    expect(
+      saveIneligibleReason(
+        {
+          saveHistory: new Set(),
+          saveUsedThisDraft: true,
+          franchisePlayer,
+        },
+        candidate,
+      ),
+    ).toBe("already-used");
   });
 });
 
