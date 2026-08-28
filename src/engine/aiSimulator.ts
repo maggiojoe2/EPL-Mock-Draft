@@ -75,9 +75,7 @@ export function conflictsWithFranchisePosition(
  *  position) so the two never drift. `null` when the player would in fact
  *  be saveable (the caller only reaches for this when it already isn't). */
 export type SaveIneligibleReason =
-  | "already-used"
-  | "previously-saved"
-  | "franchise-position";
+  "already-used" | "previously-saved" | "franchise-position";
 
 type SaveEligibilityTeam = Pick<
   Team,
@@ -90,7 +88,8 @@ export function saveIneligibleReason(
 ): SaveIneligibleReason | null {
   if (team.saveHistory.has(candidate.id)) return "previously-saved";
   if (team.saveUsedThisDraft) return "already-used";
-  if (conflictsWithFranchisePosition(team, candidate)) return "franchise-position";
+  if (conflictsWithFranchisePosition(team, candidate))
+    return "franchise-position";
   return null;
 }
 
