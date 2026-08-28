@@ -263,4 +263,52 @@ describe("autoSelectFranchise", () => {
     const result = autoSelectFranchise(teams, null);
     expect(result[0].franchisePlayer).toBeNull();
   });
+
+  it("franchises the eligible candidate with the best overall pair value, not just the best-ADP one, when a position conflict blocks the naive choice", () => {
+    // Best (RB) and mid (RB) share a position with the roster's cheapest
+    // save target, so each excludes it from its own pairing; worst (TE)
+    // doesn't conflict with it, so worst's pair (worst + cheapSave) beats
+    // both — this exercises computeFranchiseTarget's full search through
+    // autoSelectFranchise, not just its top-two comparison.
+    const best = makePlayer("Best Guy", "RB", 1);
+    const mid = makePlayer("Mid Guy", "RB", 5);
+    const worst = makePlayer("Worst Guy", "TE", 10);
+    const cheapSave = makePlayer("Cheap Save", "RB", 0.5);
+    const pool: Player[] = [best, mid, worst, cheapSave];
+    const roster: RosterImport = new Map([
+      [
+        "Team A",
+        [
+          {
+            playerName: "Best Guy",
+            franchiseEligible: true,
+            previouslySaved: false,
+          },
+          {
+            playerName: "Mid Guy",
+            franchiseEligible: true,
+            previouslySaved: false,
+          },
+          {
+            playerName: "Worst Guy",
+            franchiseEligible: true,
+            previouslySaved: false,
+          },
+          {
+            playerName: "Cheap Save",
+            franchiseEligible: false,
+            previouslySaved: false,
+          },
+        ],
+      ],
+    ]);
+    const teams = buildTeamsFromImport(roster, pool);
+    const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0.99);
+    try {
+      const result = autoSelectFranchise(teams, null);
+      expect(result[0].franchisePlayer!.id).toBe(worst.id);
+    } finally {
+      randomSpy.mockRestore();
+    }
+  });
 });

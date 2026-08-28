@@ -4,17 +4,19 @@ import {
   computeFranchiseTarget,
   computeSaveTarget,
   computeSaveTargetWithMistake,
+  conflictsWithFranchisePosition,
+  saveIneligibleReason,
   shouldPullback,
 } from "../aiSimulator";
 import type { Player } from "../../types";
 
 // ── Fixtures ───────────────────────────────────────────────────────────────
 
-function makePlayer(name: string, adp: number): Player {
+function makePlayer(name: string, adp: number, position = "RB"): Player {
   return {
     id: `${name.toLowerCase().replace(/\s+/g, "-")}`,
     name,
-    position: "RB",
+    position,
     nflTeam: "KC",
     adp,
   };
@@ -72,65 +74,58 @@ describe("computeFranchiseTarget", () => {
     expect(target).toBeNull();
   });
 
-  it("swaps to franchise Y when Y is save-blocked, would otherwise be the save target, and X is not blocked", () => {
-    const x = makePlayer("X", 1); // best eligible
-    const y = makePlayer("Y", 2); // second-best eligible, save-blocked
+  it("reaches past the top two eligible candidates when a lower-ranked one pairs with a better save target", () => {
+    // A (rank 1) and B (rank 2) both share RB with the roster's best cheap
+    // save target, D, so it's excluded from both their pairs — leaving them
+    // to pair with the only other eligible candidate, C (TE, rank 3). C
+    // itself doesn't conflict with D, so C's pair (C + D) beats both A's and
+    // B's, even though C is the worst-ADP eligible candidate.
+    const a = makePlayer("A", 1, "RB");
+    const b = makePlayer("B", 5, "RB");
+    const c = makePlayer("C", 10, "TE");
+    const d = makePlayer("D", 0.5, "RB"); // not franchise-eligible
+    const target = withoutMistakes(() =>
+      computeFranchiseTarget({
+        previousYearRoster: [a, b, c, d],
+        franchiseEligibleIds: new Set([a.id, b.id, c.id]),
+        saveHistory: new Set(),
+      }),
+    );
+    expect(target!.id).toBe(c.id);
+  });
+
+  it("franchises the better-ADP candidate when the top two share a position, leaving neither a legal save target", () => {
+    // X and Y are the only two roster players and share a position, so each
+    // excludes the other from its save-candidate search — both pairs
+    // contribute zero save-side value, not an error or an exclusion. The
+    // tie resolves on ADP alone.
+    const x = makePlayer("X", 1, "RB");
+    const y = makePlayer("Y", 2, "RB");
     const target = withoutMistakes(() =>
       computeFranchiseTarget({
         previousYearRoster: [x, y],
         franchiseEligibleIds: new Set([x.id, y.id]),
-        saveHistory: new Set([y.id]),
-      }),
-    );
-    expect(target!.id).toBe(y.id);
-  });
-
-  it("does not swap when both X and Y are save-blocked (franchises X as normal)", () => {
-    const x = makePlayer("X", 1);
-    const y = makePlayer("Y", 2);
-    const target = withoutMistakes(() =>
-      computeFranchiseTarget({
-        previousYearRoster: [x, y],
-        franchiseEligibleIds: new Set([x.id, y.id]),
-        saveHistory: new Set([x.id, y.id]),
+        saveHistory: new Set(),
       }),
     );
     expect(target!.id).toBe(x.id);
   });
 
-  it("does not swap when Y is save-blocked but a non-eligible player outranks Y (Y was never the natural save target)", () => {
-    const x = makePlayer("X", 1);
-    const y = makePlayer("Y", 3); // eligible, second-best, save-blocked
-    const nonEligible = makePlayer("Better Non-Eligible", 2); // outranks Y, not save-blocked
+  it("breaks a tie between equally-scored pairs toward the lower-ADP franchise candidate", () => {
+    const a = makePlayer("A", 1, "RB");
+    const b = makePlayer("B", 3, "WR");
+    // Both pairs (a+b and b+a) sum to the same combined ADP.
     const target = withoutMistakes(() =>
       computeFranchiseTarget({
-        previousYearRoster: [x, y, nonEligible],
-        franchiseEligibleIds: new Set([x.id, y.id]),
-        saveHistory: new Set([y.id]),
+        previousYearRoster: [a, b],
+        franchiseEligibleIds: new Set([a.id, b.id]),
+        saveHistory: new Set(),
       }),
     );
-    // The natural save target excluding X is the non-eligible player, not Y,
-    // so Y's absence isn't attributable to its block — no swap.
-    expect(target!.id).toBe(x.id);
+    expect(target!.id).toBe(a.id);
   });
 
-  it("never considers a third eligible candidate for the swap", () => {
-    const x = makePlayer("X", 1);
-    const y = makePlayer("Y", 2); // save-blocked
-    const z = makePlayer("Z", 3); // third-best eligible, not save-blocked
-    const target = withoutMistakes(() =>
-      computeFranchiseTarget({
-        previousYearRoster: [x, y, z],
-        franchiseEligibleIds: new Set([x.id, y.id, z.id]),
-        saveHistory: new Set([x.id, y.id]),
-      }),
-    );
-    // Both X and Y are blocked, so no swap — and Z (third-ranked) is never
-    // considered even though it isn't blocked.
-    expect(target!.id).toBe(x.id);
-  });
-
-  it("applies mistake noise by franchising the next-best eligible candidate", () => {
+  it("applies mistake noise by franchising the second-best pair's candidate", () => {
     const best = makePlayer("Best", 1);
     const nextBest = makePlayer("Next Best", 2);
     const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0);
@@ -146,18 +141,16 @@ describe("computeFranchiseTarget", () => {
     }
   });
 
-  it("applies mistake noise relative to the swapped target, stepping to the third-ranked eligible player (not back to X)", () => {
-    const x = makePlayer("X", 1); // best eligible, earmarked for save after swap
-    const y = makePlayer("Y", 2); // second-best eligible, save-blocked — swap target
-    const z = makePlayer("Z", 3); // third-best eligible
+  it("falls back to the best pair on a mistake draw when there's no second eligible candidate", () => {
+    const only = makePlayer("Only Guy", 5);
     const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0);
     try {
       const target = computeFranchiseTarget({
-        previousYearRoster: [x, y, z],
-        franchiseEligibleIds: new Set([x.id, y.id, z.id]),
-        saveHistory: new Set([y.id]),
+        previousYearRoster: [only],
+        franchiseEligibleIds: new Set([only.id]),
+        saveHistory: new Set(),
       });
-      expect(target!.id).toBe(z.id);
+      expect(target!.id).toBe(only.id);
     } finally {
       randomSpy.mockRestore();
     }
@@ -168,7 +161,7 @@ describe("computeFranchiseTarget", () => {
 
 describe("computeSaveTarget", () => {
   it("picks the best-ADP remaining player, excluding the franchise target", () => {
-    const franchise = makePlayer("Franchise", 1);
+    const franchise = makePlayer("Franchise", 1, "QB");
     const best = makePlayer("Best Remaining", 2);
     const worse = makePlayer("Worse Remaining", 5);
     const target = computeSaveTarget(
@@ -179,7 +172,7 @@ describe("computeSaveTarget", () => {
   });
 
   it("skips players already in save history", () => {
-    const franchise = makePlayer("Franchise", 1);
+    const franchise = makePlayer("Franchise", 1, "QB");
     const blocked = makePlayer("Blocked", 2);
     const nextBest = makePlayer("Next Best", 3);
     const target = computeSaveTarget(
@@ -194,7 +187,7 @@ describe("computeSaveTarget", () => {
 
   it("falls through to a non-eligible player when it outranks the eligible pool", () => {
     // computeSaveTarget is roster-wide — eligibility is irrelevant to it.
-    const franchise = makePlayer("Franchise", 1);
+    const franchise = makePlayer("Franchise", 1, "QB");
     const nonEligibleButBest = makePlayer("Non-Eligible Best", 2);
     const eligibleWorse = makePlayer("Eligible Worse", 4);
     const target = computeSaveTarget(
@@ -208,7 +201,7 @@ describe("computeSaveTarget", () => {
   });
 
   it("returns null when no roster is left after excluding franchise target and save history", () => {
-    const franchise = makePlayer("Franchise", 1);
+    const franchise = makePlayer("Franchise", 1, "QB");
     const blocked = makePlayer("Blocked", 2);
     const target = computeSaveTarget(
       {
@@ -231,7 +224,7 @@ describe("computeSaveTarget", () => {
   });
 
   it("recomputes dynamically when the previous target is no longer valid (e.g. now saved)", () => {
-    const franchise = makePlayer("Franchise", 1);
+    const franchise = makePlayer("Franchise", 1, "QB");
     const prevTarget = makePlayer("Previously Best", 2);
     const nextTarget = makePlayer("Now Best", 3);
 
@@ -255,13 +248,139 @@ describe("computeSaveTarget", () => {
     );
     expect(after!.id).toBe(nextTarget.id);
   });
+
+  it("excludes a candidate that shares a position with the franchise target, even when it's the best ADP", () => {
+    const franchise = makePlayer("Franchise", 1, "QB");
+    const sharesPosition = makePlayer("Same Position", 2, "QB");
+    const legal = makePlayer("Legal", 3, "RB");
+    const target = computeSaveTarget(
+      {
+        previousYearRoster: [franchise, sharesPosition, legal],
+        saveHistory: new Set(),
+      },
+      franchise,
+    );
+    expect(target!.id).toBe(legal.id);
+  });
+
+  it("returns null when the only remaining candidates share the franchise target's position", () => {
+    const franchise = makePlayer("Franchise", 1, "QB");
+    const sharesPosition = makePlayer("Same Position", 2, "QB");
+    const target = computeSaveTarget(
+      {
+        previousYearRoster: [franchise, sharesPosition],
+        saveHistory: new Set(),
+      },
+      franchise,
+    );
+    expect(target).toBeNull();
+  });
+});
+
+// ── conflictsWithFranchisePosition ──────────────────────────────────────────
+
+describe("conflictsWithFranchisePosition", () => {
+  it("is false when the team has no franchise player", () => {
+    const candidate = makePlayer("Candidate", 1, "QB");
+    expect(
+      conflictsWithFranchisePosition({ franchisePlayer: null }, candidate),
+    ).toBe(false);
+  });
+
+  it("is true when the candidate shares the franchise player's position", () => {
+    const franchisePlayer = makePlayer("Franchise", 1, "QB");
+    const candidate = makePlayer("Candidate", 2, "QB");
+    expect(conflictsWithFranchisePosition({ franchisePlayer }, candidate)).toBe(
+      true,
+    );
+  });
+
+  it("is false when the candidate's position differs from the franchise player's", () => {
+    const franchisePlayer = makePlayer("Franchise", 1, "QB");
+    const candidate = makePlayer("Candidate", 2, "RB");
+    expect(conflictsWithFranchisePosition({ franchisePlayer }, candidate)).toBe(
+      false,
+    );
+  });
+});
+
+// ── saveIneligibleReason ─────────────────────────────────────────────────────
+// Regression coverage for the bug where a pullback-only prompt (i.e. a save
+// blocked for a reason other than the franchise-position rule) gave no
+// on-screen explanation, reading as "my save disappeared" after a decline
+// rather than "this player specifically isn't saveable."
+
+describe("saveIneligibleReason", () => {
+  const baseTeam = {
+    saveHistory: new Set<string>(),
+    saveUsedThisDraft: false,
+    franchisePlayer: null as Player | null,
+  };
+
+  it("is null when the candidate is in fact saveable", () => {
+    const candidate = makePlayer("Candidate", 1, "RB");
+    expect(saveIneligibleReason(baseTeam, candidate)).toBeNull();
+  });
+
+  it("is 'already-used' when the team has used its one save this draft", () => {
+    const candidate = makePlayer("Candidate", 1, "RB");
+    expect(
+      saveIneligibleReason({ ...baseTeam, saveUsedThisDraft: true }, candidate),
+    ).toBe("already-used");
+  });
+
+  it("is 'previously-saved' when the player is in the team's saveHistory", () => {
+    const candidate = makePlayer("Candidate", 1, "RB");
+    expect(
+      saveIneligibleReason(
+        { ...baseTeam, saveHistory: new Set([candidate.id]) },
+        candidate,
+      ),
+    ).toBe("previously-saved");
+  });
+
+  it("is 'franchise-position' when the candidate shares the franchise player's position", () => {
+    const franchisePlayer = makePlayer("Franchise", 1, "QB");
+    const candidate = makePlayer("Candidate", 2, "QB");
+    expect(
+      saveIneligibleReason({ ...baseTeam, franchisePlayer }, candidate),
+    ).toBe("franchise-position");
+  });
+
+  it("checks reasons in the same precedence as buildReactionQueue's isSaveable", () => {
+    // isSaveable checks `!saveHistory.has(...) && !saveUsedThisDraft && ...`,
+    // in that order — so previously-saved wins over already-used, which wins
+    // over franchise-position.
+    const franchisePlayer = makePlayer("Franchise", 1, "QB");
+    const candidate = makePlayer("Candidate", 2, "QB");
+    expect(
+      saveIneligibleReason(
+        {
+          saveHistory: new Set([candidate.id]),
+          saveUsedThisDraft: true,
+          franchisePlayer,
+        },
+        candidate,
+      ),
+    ).toBe("previously-saved");
+    expect(
+      saveIneligibleReason(
+        {
+          saveHistory: new Set(),
+          saveUsedThisDraft: true,
+          franchisePlayer,
+        },
+        candidate,
+      ),
+    ).toBe("already-used");
+  });
 });
 
 // ── computeSaveTargetWithMistake ────────────────────────────────────────────
 
 describe("computeSaveTargetWithMistake", () => {
   it("matches computeSaveTarget on an undisturbed decision", () => {
-    const franchise = makePlayer("Franchise", 1);
+    const franchise = makePlayer("Franchise", 1, "QB");
     const best = makePlayer("Best Remaining", 2);
     const worse = makePlayer("Worse Remaining", 5);
     const target = withoutMistakes(() =>
@@ -306,7 +425,7 @@ describe("computeSaveTargetWithMistake", () => {
   });
 
   it("returns null when there is no candidate at all, mistake or not", () => {
-    const franchise = makePlayer("Franchise", 1);
+    const franchise = makePlayer("Franchise", 1, "QB");
     const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0);
     try {
       const target = computeSaveTargetWithMistake(

@@ -51,17 +51,93 @@ export function bestByAdp(players: Player[]): Player | null {
   return players.reduce((best, p) => (p.adp < best.adp ? p : best));
 }
 
+/** Whether `candidate` shares a `position` with `team`'s declared franchise
+ *  player — the rule that a saved player may never occupy the same position
+ *  as the franchise player. `franchisePlayer === null` (no franchise player
+ *  declared yet, or none eligible) always reads as "no conflict." Shared by
+ *  every save-eligibility check (live save decisions, the reaction queue,
+ *  `invokeSave`'s guard, and the modal's render-time re-derivation) so the
+ *  rule can't drift between call sites. */
+export function conflictsWithFranchisePosition(
+  team: Pick<Team, "franchisePlayer">,
+  candidate: Player,
+): boolean {
+  return (
+    team.franchisePlayer !== null &&
+    candidate.position === team.franchisePlayer.position
+  );
+}
+
+/** Why `candidate` isn't offered as a save to `team` when it's the sole
+ *  reaction option a pullback-only prompt renders — one reason per
+ *  eligibility check in `buildReactionQueue`'s `isSaveable`, checked in the
+ *  same order (`saveHistory`, then `saveUsedThisDraft`, then franchise
+ *  position) so the two never drift. `null` when the player would in fact
+ *  be saveable (the caller only reaches for this when it already isn't). */
+export type SaveIneligibleReason =
+  "already-used" | "previously-saved" | "franchise-position";
+
+type SaveEligibilityTeam = Pick<
+  Team,
+  "saveHistory" | "saveUsedThisDraft" | "franchisePlayer"
+>;
+
+export function saveIneligibleReason(
+  team: SaveEligibilityTeam,
+  candidate: Player,
+): SaveIneligibleReason | null {
+  if (team.saveHistory.has(candidate.id)) return "previously-saved";
+  if (team.saveUsedThisDraft) return "already-used";
+  if (conflictsWithFranchisePosition(team, candidate))
+    return "franchise-position";
+  return null;
+}
+
 type FranchiseTeam = Pick<
   Team,
   "previousYearRoster" | "franchiseEligibleIds" | "saveHistory"
 >;
 
+/** A monotonically decreasing function of ADP — lower ADP (better player)
+ *  scores higher. Only ever used to compare pairs against each other, so its
+ *  absolute scale doesn't matter, only that it's decreasing in ADP. */
+function adpValue(adp: number): number {
+  return -adp;
+}
+
+type SaveTeam = Pick<Team, "previousYearRoster" | "saveHistory">;
+
+/** Save-eligible candidates for `franchiseTarget` (excluding it and anyone
+ *  already in save history), further excluding anyone who shares a position
+ *  with `franchiseTarget` (a save may never double up the franchise slot's
+ *  position). Sorted ascending by ADP — best first. */
+function saveCandidates(
+  team: SaveTeam,
+  franchiseTarget: Player | null,
+): Player[] {
+  return team.previousYearRoster
+    .filter(
+      (p) =>
+        p.id !== franchiseTarget?.id &&
+        !team.saveHistory.has(p.id) &&
+        !conflictsWithFranchisePosition(
+          { franchisePlayer: franchiseTarget },
+          p,
+        ),
+    )
+    .slice()
+    .sort((a, b) => a.adp - b.adp);
+}
+
 /**
- * Computes a team's franchise target: its best franchise-eligible player,
- * unless doing so would leave a save-blocked eligible player unprotected —
- * in which case the two swap (franchise the save-blocked one, save the
- * other). Confined to the top two eligible players by ADP; never considers
- * a third candidate. Subject to mistake noise (near-miss substitution).
+ * Computes a team's franchise target by searching every franchise-eligible
+ * candidate `F` for the one whose best legal save target (`saveCandidates(team,
+ * F)[0]`) pairs with it for the highest combined ADP-based value — not just
+ * comparing the top two eligible players. A candidate with no legal save
+ * target is still comparable (contributes zero save-side value, not a
+ * penalty). Ties go to the lower-ADP `F`. Subject to mistake noise: on a
+ * mistake draw, the second-best pair's `F` stands in for the best, falling
+ * back to the best when there's no second eligible candidate.
  *
  * Returns null when the team has no franchise-eligible players.
  */
@@ -73,50 +149,20 @@ export function computeFranchiseTarget(team: FranchiseTeam): Player | null {
 
   if (eligible.length === 0) return null;
 
-  const X = eligible[0];
-  const Y = eligible[1] ?? null;
+  const pairs = eligible
+    .map((F) => {
+      const saveTarget = saveCandidates(team, F)[0] ?? null;
+      const score =
+        adpValue(F.adp) + (saveTarget ? adpValue(saveTarget.adp) : 0);
+      return { F, score };
+    })
+    .sort((a, b) => b.score - a.score || a.F.adp - b.F.adp);
 
-  let target = X;
-  if (Y) {
-    const xBlocked = team.saveHistory.has(X.id);
-    const yBlocked = team.saveHistory.has(Y.id);
-    // The player who would naturally be targeted for save (excluding X),
-    // ignoring save history — used to tell whether Y's absence from the
-    // save target is actually *because* Y is save-blocked.
-    const naturalSaveTarget = bestByAdp(
-      team.previousYearRoster.filter((p) => p.id !== X.id),
-    );
-    const swap = yBlocked && !xBlocked && naturalSaveTarget?.id === Y.id;
-    if (swap) target = Y;
-  }
+  // Mistake noise substitutes the second-best pair's franchise candidate for
+  // the best, falling back to the best when there's no second candidate.
+  if (isMistake() && pairs[1]) return pairs[1].F;
 
-  // Mistake noise substitutes the next-best eligible candidate (by ADP) for
-  // whichever player the algorithm above landed on — X normally, or Y when
-  // the save-blocked swap fired. Note this is intentionally independent of
-  // the swap's own top-two confinement: if the swap already promoted Y to
-  // the franchise slot, a mistake here steps to the third-ranked eligible
-  // player, not back to X (which is earmarked for save).
-  if (isMistake()) {
-    const idx = eligible.findIndex((p) => p.id === target.id);
-    const mistakeTarget = eligible[idx + 1];
-    if (mistakeTarget) return mistakeTarget;
-  }
-
-  return target;
-}
-
-type SaveTeam = Pick<Team, "previousYearRoster" | "saveHistory">;
-
-/** Save-eligible candidates (excluding the franchise target and anyone
- *  already in save history), sorted ascending by ADP — best first. */
-function saveCandidates(
-  team: SaveTeam,
-  franchiseTarget: Player | null,
-): Player[] {
-  return team.previousYearRoster
-    .filter((p) => p.id !== franchiseTarget?.id && !team.saveHistory.has(p.id))
-    .slice()
-    .sort((a, b) => a.adp - b.adp);
+  return pairs[0].F;
 }
 
 /**

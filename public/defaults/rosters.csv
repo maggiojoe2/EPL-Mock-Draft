@@ -2,26 +2,26 @@ team_name,player_name,franchise_eligible,previously_saved
 Too Many Cooks,Jayden Daniels,true,false
 Too Many Cooks,Ashton Jeanty,false,false
 Too Many Cooks,Kenneth Walker III,true,true
-Too Many Cooks,Marvin Harrison Jr,true,false
+Too Many Cooks,Marvin Harrison Jr.,true,false
 Too Many Cooks,Rome Odunze,true,false
 Too Many Cooks,Colston Loveland,false,false
 Too Many Cooks,Drake London,true,false
-Too Many Cooks,Tetairoa McMilan,false,false
+Too Many Cooks,Tetairoa McMillan,false,false
 Too Many Cooks,RJ Harvey,false,false
 Too Many Cooks,Drake Maye,true,false
 Too Many Cooks,Trey Benson,true,false
 Too Many Cooks,Omarion Hampton,false,false
 Too Many Cooks,Luther Burden III,false,false
-Too Many Cooks,Kyle Pitts Sr,false,false
-Too Many Cooks,Eddie Pinero,false,false
+Too Many Cooks,Kyle Pitts Sr.,false,false
+Too Many Cooks,Eddy Pineiro,false,false
 Too Many Cooks,Pittsburgh Steelers DST,false,false
-Taco Bout a Win,Patrick Mahomes,true,false
+Taco Bout a Win,Patrick Mahomes II,true,false
 Taco Bout a Win,Woody Marks,false,false
-Taco Bout a Win,Kenneth Gainwell,false,false
+Taco Bout a Win,Kenny Gainwell,false,false
 Taco Bout a Win,Michael Wilson,false,false
 Taco Bout a Win,Ladd McConkey,false,false
-Taco Bout a Win,Harold Fannin Jr,false,false
-Taco Bout a Win,Brian Thomas Jr,true,true
+Taco Bout a Win,Harold Fannin Jr.,false,false
+Taco Bout a Win,Brian Thomas Jr.,true,true
 Taco Bout a Win,Malik Nabers,false,false
 Taco Bout a Win,Kaleb Johnson,false,false
 Taco Bout a Win,Jordan Addison,false,false
@@ -68,25 +68,25 @@ Lamarvelous,Lamar Jackson,true,false
 Lamarvelous,Jaylen Warren,true,false
 Lamarvelous,Michael Carter,false,false
 Lamarvelous,Terry McLaurin,true,false
-Lamarvelous,AJ Brown,true,true
+Lamarvelous,A.J. Brown,true,true
 Lamarvelous,Mark Andrews,false,false
 Lamarvelous,Courtland Sutton,false,false
 Lamarvelous,James Conner,false,false
 Lamarvelous,Travis Kelce,false,false
 Lamarvelous,Rashid Shaheed,false,false
-Lamarvelous,CJ Stroud,false,false
+Lamarvelous,C.J. Stroud,false,false
 Lamarvelous,Josh Downs,false,false
 Lamarvelous,Devin Singletary,false,false
-Lamarvelous,Aaron Jones Sr,false,false
+Lamarvelous,Aaron Jones Sr.,false,false
 Lamarvelous,Denver Broncos DST,false,false
 Lamarvelous,Chris Boswell,true,false
 Oracle of Lyra V8s,Josh Allen,true,true
 Oracle of Lyra V8s,Josh Jacobs,true,false
 Oracle of Lyra V8s,Nick Chubb,true,false
-Oracle of Lyra V8s,Deebo Samuel,false,false
+Oracle of Lyra V8s,Deebo Samuel Sr.,false,false
 Oracle of Lyra V8s,CeeDee Lamb,true,true
 Oracle of Lyra V8s,George Kittle,false,false
-Oracle of Lyra V8s,Chris Rodriguez Jr,false,false
+Oracle of Lyra V8s,Chris Rodriguez Jr.,false,false
 Oracle of Lyra V8s,Alvin Kamara,false,false
 Oracle of Lyra V8s,Hollywood Brown,false,false
 Oracle of Lyra V8s,Jake Ferguson,true,false
@@ -111,7 +111,7 @@ Captain Giaco,Jacoby Brissett,false,false
 Captain Giaco,Blake Corum,false,false
 Captain Giaco,Tre' Harris,false,false
 Captain Giaco,Tampa Bay Buccaneers DST,false,false
-Captain Giaco,Jake Elliot,false,false
+Captain Giaco,Jake Elliott,false,false
 Pushin Tush,Jalen Hurts,true,false
 Pushin Tush,Javonte Williams,false,false
 Pushin Tush,Christian McCaffrey,true,true
@@ -125,21 +125,22 @@ Pushin Tush,Brock Bowers,false,false
 Pushin Tush,Davante Adams,false,false
 Pushin Tush,Jordan Love,false,false
 Pushin Tush,Jauan Jennings,true,false
-Pushin Tush,Brian Robinson Jr,false,false
+Pushin Tush,Brian Robinson Jr.,false,false
 Pushin Tush,Alec Pierce,false,false
+Pushin Tush,Joe Mixon,true,false
 The Ironmen,Trevor Lawrence,false,false
 The Ironmen,Saquon Barkley,false,false
 The Ironmen,Rhamondre Stevenson,true,false
 The Ironmen,Jaxon Smith-Njigba,false,false
 The Ironmen,Jameson Williams,false,false
 The Ironmen,AJ Barner,false,false
-The Ironmen,Michael Pittman Jr,false,false
-The Ironmen,Tucker Craft,false,false
+The Ironmen,Michael Pittman Jr.,false,false
+The Ironmen,Tucker Kraft,false,false
 The Ironmen,Tyler Allgeier,false,false
 The Ironmen,Baker Mayfield,true,true
 The Ironmen,Chuba Hubbard,true,false
 The Ironmen,Sterling Shepard,false,false
-The Ironmen,Isiah Likely,false,false
+The Ironmen,Isaiah Likely,false,false
 The Ironmen,Jake Bates,false,false
 The Ironmen,Chase McLaughlin,true,false
 The Ironmen,Buffalo Bills DST,false,false
@@ -154,7 +155,7 @@ Roach Master General,Travis Hunter,false,false
 Roach Master General,Cam Skattebo,false,false
 Roach Master General,Quinshon Judkins,false,false
 Roach Master General,Rashee Rice,true,false
-Roach Master General,JK Dobbins,false,false
+Roach Master General,J.K. Dobbins,false,false
 Roach Master General,Jaxson Dart,false,false
 Roach Master General,Tyreek Hill,false,false
 Roach Master General,Houston Texans DST,false,false
@@ -166,7 +167,7 @@ Taylormade,Tee Higgins,true,true
 Taylormade,Jaylen Waddle,false,false
 Taylormade,Hunter Henry,false,false
 Taylormade,DeVonta Smith,true,true
-Taylormade,Tyrone Tracy Jr,false,false
+Taylormade,Tyrone Tracy Jr.,false,false
 Taylormade,Sam LaPorta,false,false
 Taylormade,Garrett Wilson,false,false
 Taylormade,Ricky Pearsall,false,false
@@ -181,11 +182,11 @@ Sasquatch 9ers,Bijan Robinson,true,true
 Sasquatch 9ers,Zay Flowers,false,false
 Sasquatch 9ers,Amon-Ra St. Brown,true,true
 Sasquatch 9ers,Dalton Schultz,false,false
-Sasquatch 9ers,Travis Etienne Jr,true,false
+Sasquatch 9ers,Travis Etienne Jr.,true,false
 Sasquatch 9ers,Xavier Worthy,false,false
 Sasquatch 9ers,Jakobi Meyers,false,false
 Sasquatch 9ers,Caleb Williams,false,false
-Sasquatch 9ers,Chris Godwin Jr,true,false
+Sasquatch 9ers,Chris Godwin Jr.,true,false
 Sasquatch 9ers,D'Andre Swift,false,false
 Sasquatch 9ers,T.J. Hockenson,false,false
 Sasquatch 9ers,Kareem Hunt,true,false

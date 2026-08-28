@@ -175,6 +175,83 @@ describe("save mechanics", () => {
   });
 });
 
+// ── Save/franchise position restriction ────────────────────────────────────
+// A saved player may never share a position with the team's declared
+// franchise player.
+
+describe("save/franchise position restriction", () => {
+  it("falls through to a pullback-only prompt when the picked player shares a position with the franchise player", () => {
+    const franchisePlayer = makePlayer(0); // position "RB" (testHelpers default)
+    const player = makePlayer(1); // also "RB" — conflicts with franchisePlayer
+    const pullbackOption = makePlayer(99);
+    const state = makeSaveState(player, {
+      franchisePlayer,
+      previousYearRoster: [player, pullbackOption],
+    });
+
+    const next = draftEngine(state, { type: "PICK_PLAYER", player });
+
+    expect(next.pendingPrompt).toMatchObject({
+      kind: "pullback",
+      pickedPlayer: player,
+    });
+  });
+
+  it("offers no prompt at all when the position conflict leaves no pullback options either", () => {
+    const franchisePlayer = makePlayer(0);
+    const player = makePlayer(1); // shares franchisePlayer's position
+    const state = makeSaveState(player, { franchisePlayer });
+
+    const next = draftEngine(state, { type: "PICK_PLAYER", player });
+
+    expect(next.pendingPrompt).toBeNull();
+  });
+
+  it("still offers a normal save when the picked player's position differs from the franchise player's", () => {
+    const franchisePlayer = { ...makePlayer(0), position: "QB" };
+    const player = makePlayer(1); // "RB" — no conflict
+    const state = makeSaveState(player, { franchisePlayer });
+
+    const next = draftEngine(state, { type: "PICK_PLAYER", player });
+
+    expect(next.pendingPrompt).toMatchObject({ kind: "save" });
+  });
+
+  it("INVOKE_SAVE no-ops when dispatched against a position-blocked save", () => {
+    const franchisePlayer = makePlayer(0);
+    const player = makePlayer(1); // shares franchisePlayer's position
+    const ownerTeam = makeTeam({
+      name: "Owner",
+      franchisePlayer,
+      previousYearRoster: [player],
+      saveHistory: new Set(),
+      saveUsedThisDraft: false,
+      lastAvailableRound: 15,
+    });
+    const teams = Array.from({ length: 12 }, (_, i) =>
+      i === 1 ? ownerTeam : makeTeam({ name: `Team ${i}` }),
+    );
+    // Hand-built pendingPrompt: the reaction queue would never produce this
+    // (isSaveable already excludes it), so this exercises invokeSave's own
+    // defensive guard directly.
+    const state = makeDraftState({
+      teams,
+      pendingPrompt: {
+        kind: "save",
+        pickingTeamIndex: 0,
+        reactingTeamIndex: 1,
+        player,
+        pullbackOptions: [],
+      },
+      currentPick: { round: 1, teamIndex: 0 },
+    });
+
+    const next = draftEngine(state, { type: "INVOKE_SAVE", player });
+
+    expect(next).toBe(state);
+  });
+});
+
 // ── Save-or-pullback combined reaction ─────────────────────────────────────
 // A team with an unused save that owns a saveable player can save it, pull
 // back a different previous-year player instead, or decline outright.

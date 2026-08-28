@@ -1,4 +1,5 @@
 import type { Action, DraftState, Team } from "../types";
+import { conflictsWithFranchisePosition } from "./aiSimulator";
 import { advanceCursor, placeInRoster, retractNormalPick } from "./pickReducer";
 import { resolveReaction } from "./reactionQueue";
 import { buildReactionLogEntry } from "./reactionLogEntry";
@@ -17,6 +18,13 @@ export function invokeSave(
 ): DraftState {
   if (!state.pendingPrompt || state.pendingPrompt.kind !== "save") return state;
   const { pickingTeamIndex, reactingTeamIndex, player } = state.pendingPrompt;
+
+  // Defensive guard: a save may never double up the franchise slot's
+  // position. The reaction queue already excludes these, but this mirrors
+  // that check here in case the prompt was built before the franchise
+  // player was set or dispatched some other way.
+  if (conflictsWithFranchisePosition(state.teams[reactingTeamIndex], player))
+    return state;
 
   // A save blocks the original pick: remove the player from the picking team's
   // roster; the voided normal pick record is stripped from history below.

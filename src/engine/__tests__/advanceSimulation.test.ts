@@ -518,6 +518,45 @@ describe("ADVANCE_SIMULATION", () => {
     );
     expect(after.teams[1].roster[15]).toBeNull();
   });
+
+  it("never invokes a save for a picked player that shares a position with the team's franchise player, falling through to pullback instead", () => {
+    const franchisePlayer: Player = makePlayer(0); // "RB" (testHelpers default)
+    const player: Player = makePlayer(1); // also "RB" — conflicts with franchisePlayer
+    const ownerTeam = makeTeam({
+      name: "Owner",
+      franchisePlayer,
+      previousYearRoster: [player],
+      saveHistory: new Set(),
+      saveUsedThisDraft: false,
+      lastAvailableRound: 15,
+    });
+    const teams = Array.from({ length: 12 }, (_, i) =>
+      i === 1 ? ownerTeam : makeTeam({ name: `Team ${i}` }),
+    );
+    const state = makeDraftState({
+      mode: "watch",
+      userTeamIndex: null,
+      teams,
+      pendingPrompt: {
+        kind: "save",
+        pickingTeamIndex: 0,
+        reactingTeamIndex: 1,
+        player,
+        pullbackOptions: [], // no other previous-year players to pull back
+      },
+      currentPick: { round: 1, teamIndex: 0 },
+    });
+
+    const next = withoutMistakes(() =>
+      draftEngine(state, { type: "ADVANCE_SIMULATION" }),
+    );
+    // Save never fires — the player is excluded from the recomputed save
+    // target by the position conflict — and there's no pullback candidate
+    // either, so the reaction is declined outright.
+    expect(next.teams[1].roster[15]).toBeNull();
+    expect(next.teams[1].saveUsedThisDraft).toBe(false);
+    expect(next.pendingPrompt).toBeNull();
+  });
 });
 
 // ── initDraft: pool is ADP-sorted ─────────────────────────────────────────────
