@@ -59,49 +59,60 @@ by the position rule.
 
 **Blocked by:** None — can start immediately
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Shared position predicate exists in `aiSimulator.ts`, handles
+- [x] Shared position predicate exists in `aiSimulator.ts`, handles
       `franchisePlayer === null` as "no conflict."
-- [ ] `saveCandidates` excludes same-position (different-id) candidates from
+- [x] `saveCandidates` excludes same-position (different-id) candidates from
       the franchise target, in addition to the existing exact-id and
       `saveHistory` exclusions.
-- [ ] `computeFranchiseTarget` searches all franchise-eligible candidates
+- [x] `computeFranchiseTarget` searches all franchise-eligible candidates
       (not just the top two), pairing each with `saveCandidates(team,
       F)[0]`, and selects the candidate whose pair has the best combined
       ADP-based value.
-- [ ] A three-plus-candidate chain scenario (spanning save-history blocks
+- [x] A three-plus-candidate chain scenario (spanning save-history blocks
       and shared positions) where the optimal pair requires reaching past
       rank 2 is covered by a test, and the search finds it.
-- [ ] A same-position top-2 pair still results in the better-ADP candidate
+- [x] A same-position top-2 pair still results in the better-ADP candidate
       being franchised (position caps retention to one of them regardless
       of which is chosen).
-- [ ] A franchise candidate with no legal save target is still a valid,
+- [x] A franchise candidate with no legal save target is still a valid,
       comparable choice (contributes zero save-side value, not excluded or
       erroring).
-- [ ] Mistake noise substitutes the second-best pair's candidate for the
+- [x] Mistake noise substitutes the second-best pair's candidate for the
       franchise target on a mistake draw, falling back to the best pair
       when no second eligible candidate exists.
-- [ ] `buildReactionQueue`'s `isSaveable` returns false when the picked
+- [x] `buildReactionQueue`'s `isSaveable` returns false when the picked
       player shares a position with `team.franchisePlayer`; the queue falls
       through to a pullback-only prompt (or no prompt) exactly as it does
       for the existing `saveHistory`/`saveUsedThisDraft` blocks.
-- [ ] `invokeSave` no-ops if dispatched against a position-blocked save.
-- [ ] `ReactionModal` shows the explanatory copy above whenever a prompt is
+- [x] `invokeSave` no-ops if dispatched against a position-blocked save.
+- [x] `ReactionModal` shows the explanatory copy above whenever a prompt is
       pullback-only due to a position conflict; pullback options (if any)
       still render normally.
-- [ ] A simulated team with a position-conflicting franchise player never
+- [x] A simulated team with a position-conflicting franchise player never
       dispatches `INVOKE_SAVE` for that player in `advanceSimulation`,
       falling through to the pullback evaluation instead.
-- [ ] `CONTEXT.md`'s Save and Franchise player entries are updated with the
+- [x] `CONTEXT.md`'s Save and Franchise player entries are updated with the
       wording above.
-- [ ] `aiSimulator.test.ts`'s old top-2-swap-specific tests (including
+- [x] `aiSimulator.test.ts`'s old top-2-swap-specific tests (including
       "never considers a third eligible candidate for the swap," which the
       redesign deliberately reverses) are rewritten around the new search;
       `setupHelpers.test.ts`'s `autoSelectFranchise` tests are reviewed
       against the redesigned function.
-- [ ] `reactions.test.ts` and `advanceSimulation.test.ts` get position-block
+- [x] `reactions.test.ts` and `advanceSimulation.test.ts` get position-block
       coverage (pullback-only fallback, `INVOKE_SAVE` no-op, AI never
       invoking a position-blocked save). No component test added for the
       modal copy (consistent with `ReactionModal` being untested today, per
       ADR-0002's precedent).
+
+## Comments
+
+Landed in `098926d`. A follow-up bug was reported after this shipped: the
+pullback-only prompt explained a save block via this issue's copy only when
+the reason was the franchise-position conflict — when it was blocked by
+`saveUsedThisDraft` or `saveHistory` instead, the modal gave no explanation
+at all, which read as "declining a save once permanently disables it."
+Fixed in `c8903cd` by generalizing the explanatory copy to all three
+`isSaveable` block reasons (see `saveIneligibleReason` in `aiSimulator.ts`);
+the position-conflict copy and behavior from this issue are unchanged.
