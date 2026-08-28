@@ -4,7 +4,7 @@
 
 **Blocked by:** 01, 02, 03, 04 — dispatches synthesized actions through every case.
 
-**Status:** ready-for-human
+**Status:** done
 
 - [x] `simulationOrchestrator.ts` exists under `src/engine/` and exports the `ADVANCE_SIMULATION` handling logic
 - [x] The inline "skip teams with no open slot" loop is gone; the orchestrator calls `advanceCursor` from `pickReducer.ts` instead

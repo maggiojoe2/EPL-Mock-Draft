@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — the `PICK_PLAYER` case calls `buildReactionQueue`/`dequeue`.
 
-**Status:** ready-for-human
+**Status:** done
 
 - [x] `pickReducer.ts` exists under `src/engine/` and exports `nextPick`, `advanceCursor`, `nextNormalSlot`, `teamHasOpenNormalSlot`, `totalPicksFilled`, `removeFromPool`, `placeInRoster`, `retractNormalPick`
 - [x] `draftEngine.ts` no longer defines these functions itself, no longer redefines `TOTAL_ROUNDS`, and imports the shared `TOTAL_ROUNDS` from `src/constants.ts` (directly or via `pickReducer.ts`)

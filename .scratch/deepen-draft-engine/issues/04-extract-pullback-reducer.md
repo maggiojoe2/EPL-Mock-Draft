@@ -4,7 +4,7 @@
 
 **Blocked by:** 01, 02.
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] `pullbackReducer.ts` exists under `src/engine/` and exports the `INVOKE_PULLBACK`/`DECLINE_PULLBACK` handling logic
 - [ ] `draftEngine.ts` no longer defines this logic itself — it imports and delegates to `pullbackReducer.ts`

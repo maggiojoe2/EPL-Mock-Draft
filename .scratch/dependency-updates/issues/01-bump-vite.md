@@ -2,7 +2,7 @@
 
 **What to build:** Update `vite` from `^6.3.5` to the latest v8 release. This is a major bump — read the v7 and v8 migration guides, apply any required config changes to `vite.config.ts`, and confirm dev server, build, and preview all still work.
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] `vite` is on the latest v8.x in `package.json`/`package-lock.json`.
 - [x] `npm run build` and `npm run dev` (smoke-checked) both succeed.
