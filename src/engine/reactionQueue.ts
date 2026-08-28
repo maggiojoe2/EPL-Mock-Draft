@@ -1,4 +1,5 @@
 import type { DraftState, Player, Team } from "../types";
+import { conflictsWithFranchisePosition } from "./aiSimulator";
 import { buildSkipLogEntry } from "./skipLogEntry";
 
 // ── Reaction helpers ───────────────────────────────────────────────────────
@@ -29,10 +30,13 @@ export function buildReactionQueue(
     if (!hasRoomForReaction) continue;
 
     // Save check: player must be saveable (never saved by this team in the
-    // real league, per saveHistory) and the team hasn't used its one save
-    // this draft yet.
+    // real league, per saveHistory), the team hasn't used its one save this
+    // draft yet, and the player doesn't share a position with the team's
+    // franchise player (a save may never double up the franchise slot).
     const isSaveable =
-      !team.saveHistory.has(pickedPlayer.id) && !team.saveUsedThisDraft;
+      !team.saveHistory.has(pickedPlayer.id) &&
+      !team.saveUsedThisDraft &&
+      !conflictsWithFranchisePosition(team, pickedPlayer);
 
     // Pullback options: any other previous-year player still in the pool.
     // Sorted ascending by ADP so the AI's "highest-ADP" pick (opts[0]) and the

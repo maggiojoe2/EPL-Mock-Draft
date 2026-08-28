@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { TOTAL_ROUNDS } from "./constants";
 import DebugLogPanel from "./DebugLogPanel";
+import { conflictsWithFranchisePosition } from "./engine/aiSimulator";
 import { draftEngine } from "./engine/draftEngine";
 import { buildSlotTypeMap, slotKey } from "./rosterSlotType";
 import SetupScreen from "./setup/SetupScreen";
@@ -413,6 +414,11 @@ function ReactionModal({
     );
   }
 
+  const franchisePlayer = reactingTeam.franchisePlayer;
+  const positionBlocked =
+    franchisePlayer !== null &&
+    conflictsWithFranchisePosition(reactingTeam, prompt.pickedPlayer);
+
   return (
     <div className="modal-overlay">
       <div className="modal">
@@ -422,6 +428,13 @@ function ReactionModal({
           <strong>{prompt.pickedPlayer.name}</strong> from your previous-year
           roster. That pick stands.
         </p>
+        {positionBlocked && (
+          <p>
+            {reactingTeam.name} can't save {prompt.pickedPlayer.name} —{" "}
+            {prompt.pickedPlayer.position} is already locked in by your
+            franchise player, {franchisePlayer.name}.
+          </p>
+        )}
         <p>Pull back a different previous-year player instead?</p>
         <ul className="pullback-options">
           {prompt.pullbackOptions.map((p) => (

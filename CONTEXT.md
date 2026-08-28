@@ -18,11 +18,11 @@
 
 **Previous-year roster** — the set of players a fantasy team held at the end of the prior NFL season. Determines eligibility for saves, pullbacks, and franchise designation.
 
-**Franchise player** — a player who has been on the same fantasy team's previous-year roster for 2 consecutive seasons. Each team pre-declares one franchise player before the draft; they automatically fill that team's round 16 slot and are never in the available pool.
+**Franchise player** — a player who has been on the same fantasy team's previous-year roster for 2 consecutive seasons. Each team pre-declares one franchise player before the draft; they automatically fill that team's round 16 slot and are never in the available pool. A team's franchise player and saved player can never share a position (see Save).
 
 **Franchise eligibility** — the property of a player having been on the same fantasy team's roster at the end of 2 consecutive seasons. Tracked per team via the franchise_eligible flag in the roster import.
 
-**Save** — a one-per-draft action. When an opponent picks a player from your previous-year roster who has never been saved by your team before, you may block that pick and keep the player. The saved player fills your furthest-back open round (starting at round 16 or 15 if a franchise player was declared, then 14, 13, etc.).
+**Save** — a one-per-draft action. When an opponent picks a player from your previous-year roster who has never been saved by your team before, you may block that pick and keep the player. The saved player fills your furthest-back open round (starting at round 16 or 15 if a franchise player was declared, then 14, 13, etc.). A saved player may not share a position with the team's declared franchise player; if it does, the save option isn't offered (pullback is unaffected).
 
 **Saveable player** — a player on your previous-year roster who has never been saved by your team in any prior draft.
 
