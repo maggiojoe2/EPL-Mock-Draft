@@ -32,7 +32,7 @@
 
 **Last available round** — the furthest-back unfilled round slot for a team. Saves and pullbacks always fill this slot, pushing it forward. Teams with a franchise player start at round 15 (since round 16 is pre-filled); teams without one start at round 16.
 
-**Rank (Expert Consensus Ranking, half-PPR)** — a ranking of NFL players by consensus expert opinion, half-PPR scoring. Used to drive AI pick decisions, sourced from a FantasyPros CSV export.
+**Rank (Expert Consensus Ranking, half-PPR)** — a ranking of NFL players by consensus expert opinion, half-PPR scoring. Used to drive AI pick decisions, sourced from a FantasyPros CSV export a maintainer downloads by hand and refreshes on demand via `npm run update-players` — there is no live in-app fetch or fallback banner.
 
 **Practice mode** — a draft session where the user controls one team and the remaining 11 teams are simulated by the app.
 
