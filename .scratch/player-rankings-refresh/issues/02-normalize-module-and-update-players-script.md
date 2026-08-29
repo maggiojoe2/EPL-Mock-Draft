@@ -4,7 +4,9 @@
 
 **Blocked by:** 01 — Rename `adp` to `rank` throughout the app
 
-**Status:** completed
+**Status:** superseded
+
+**Superseded by:** 06 — Rebuild `update-players` for the manual FantasyPros half-PPR export. This ticket's implementation sourced full-PPR data over HTTP from a live URL; the project needs half-PPR data, which has no fetchable source, so this mechanism was rebuilt from scratch around a manually-downloaded CSV. See `.scratch/player-rankings-refresh/spec.md` ("What changed and why").
 
 - [x] A pure, directly-testable normalize/validate module takes raw source CSV text (from `https://raw.githubusercontent.com/dynastyprocess/data/master/files/db_fpecr_latest.csv`) and produces `Player[]` (`id`, `name`, `position`, `nflTeam`, `rank`) plus sanity-check results
 - [x] Sanity checks cover: minimum row count (~300), required columns present/non-empty, position codes within the known set (QB/RB/WR/TE/K/DST)

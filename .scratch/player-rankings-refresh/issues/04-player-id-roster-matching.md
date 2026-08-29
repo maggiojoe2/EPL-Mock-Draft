@@ -4,7 +4,9 @@
 
 **Blocked by:** 02 — Shared normalize/validate module + `update-players` dev script
 
-**Status:** ready-for-agent
+**Status:** wontfix
+
+**Why:** The manually-downloaded FantasyPros export has no id column, so there's no stable source id to backfill into `rosters.csv` or prefer over name matching. Roster↔pool matching stays exactly as it is today (case-insensitive name match). See `.scratch/player-rankings-refresh/spec.md` ("What changed and why").
 
 - [ ] `CSV_COLUMNS.roster` gains a `player_id` column alongside the existing `team_name, player_name, franchise_eligible, previously_saved`
 - [ ] `Player.id` is populated from the source's `id` field when available (live/bundled data), retaining synthesized-ID fallback behavior for user-uploaded pools without an `id` column

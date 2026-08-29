@@ -4,7 +4,9 @@
 
 **Blocked by:** 02 — Shared normalize/validate module + `update-players` dev script
 
-**Status:** ready-for-agent
+**Status:** wontfix
+
+**Why:** The data source changed from a live-fetchable full-PPR mirror to a manually-downloaded half-PPR export (FantasyPros' half-PPR rankings pages render client-side with no CORS-open raw CSV/JSON endpoint — confirmed in `.scratch/player-rankings-refresh/adp-source-research.md`). No fetchable half-PPR source exists, so live in-app fetch isn't viable. The app keeps its pre-existing two-state banner (bundled default / user-uploaded). See `.scratch/player-rankings-refresh/spec.md` ("What changed and why").
 
 - [ ] On setup-screen mount, the app fetches the live source CSV directly (no caching/TTL — fresh fetch every load) and normalizes it via the shared module from ticket 02
 - [ ] On any failure (network error, non-ok response, malformed/unexpected shape), the app falls back to fetching the bundled `public/defaults/players.csv`, matching today's existing fallback behavior
