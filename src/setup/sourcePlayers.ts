@@ -2,33 +2,27 @@ import Papa from "papaparse";
 import type { Player } from "../types";
 import { playerIdFromNamePos } from "./csvParser";
 
-// ── Source constants ─────────────────────────────────────────────────────
+// ── Source ───────────────────────────────────────────────────────────────
 //
-// `dynastyprocess/data`'s db_fpecr_latest.csv is a maintained, CORS-permissive
-// mirror of FantasyPros Expert Consensus Ranking data (not FantasyPros
-// directly — worth revisiting if this mirror ever lags or goes stale). It
-// bundles many different ranking views (best-ball, dynasty, IDP, per-position
-// cheat sheets, ...) into one file, one row per (player, view); the single
-// `fp_page` value below is FantasyPros' "overall" PPR redraft cheat sheet —
-// the one view with exactly one row per skill-position player, which is what
-// this app wants as its flat `rank` field. (The dynastyprocess mirror doesn't
-// separately label a half-PPR overall view — this is the closest analog.)
-
-export const SOURCE_CSV_URL =
-  "https://raw.githubusercontent.com/dynastyprocess/data/master/files/db_fpecr_latest.csv";
-
-const OVERALL_FP_PAGE = "/nfl/rankings/ppr-cheatsheets.php";
+// FantasyPros has no fetchable half-PPR endpoint (half-PPR rankings pages
+// render client-side with no CORS-open raw CSV/JSON export — see
+// `.scratch/player-rankings-refresh/adp-source-research.md`), so this data
+// must be downloaded by hand before running `update-players`:
+//
+//   1. https://www.fantasypros.com/nfl/rankings/half-point-ppr-cheatsheets.php
+//   2. Confirm "Half PPR" scoring is selected (not Standard or PPR) — the
+//      exported filename doesn't record which scoring format was used.
+//   3. Click "Export" → CSV, and save the file locally.
+//
+// The export is already one row per player, with columns:
+//   RK, TIERS, "PLAYER NAME", TEAM, "POS", "BYE WEEK", "UPSIDE ", "BUST ",
+//   "SOS SEASON", "ECR VS. ADP"
+// `POS` glues position and position-rank together (e.g. `RB1`). Only
+// PLAYER NAME, TEAM, RK, and POS are used below — the rest are ignored.
 
 const KNOWN_POSITIONS = new Set(["QB", "RB", "WR", "TE", "K", "DST"]);
 
-const REQUIRED_SOURCE_COLUMNS = [
-  "player",
-  "id",
-  "pos",
-  "team",
-  "ecr",
-  "fp_page",
-] as const;
+const REQUIRED_SOURCE_COLUMNS = ["PLAYER NAME", "TEAM", "RK", "POS"] as const;
 
 const MIN_PLAYER_ROWS = 300;
 
@@ -44,13 +38,20 @@ export interface NormalizeSourceCsvResult {
   sanity: SourceSanityCheck;
 }
 
+// ── Helpers ──────────────────────────────────────────────────────────────
+
+/** Strip a `POS` column's trailing position-rank digits, e.g. `RB1` → `RB`. */
+function stripPositionRank(pos: string): string {
+  return pos.replace(/\d+$/, "");
+}
+
 // ── normalizeSourceCsv ───────────────────────────────────────────────────
 
 /**
- * Parse the dynastyprocess `db_fpecr_latest.csv` shape into `Player[]`, plus
- * sanity-check results a caller (the `update-players` script, and eventually
- * the live in-app fetch) can use to decide whether the data is trustworthy
- * enough to use.
+ * Parse a FantasyPros half-PPR rankings CSV export (manually downloaded —
+ * see the source comment above) into `Player[]`, plus sanity-check results
+ * the `update-players` script uses to decide whether the data is
+ * trustworthy enough to overwrite the bundled defaults with.
  */
 export function normalizeSourceCsv(csvText: string): NormalizeSourceCsvResult {
   const { data, meta } = Papa.parse<Record<string, string>>(csvText, {
@@ -86,12 +87,10 @@ export function normalizeSourceCsv(csvText: string): NormalizeSourceCsvResult {
   const unrecognizedPositions = new Set<string>();
 
   const players: Player[] = data.flatMap((row) => {
-    if (row["fp_page"]?.trim() !== OVERALL_FP_PAGE) return [];
-
-    const name = row["player"]?.trim() ?? "";
-    const position = row["pos"]?.trim() ?? "";
-    const nflTeam = row["team"]?.trim() ?? "";
-    const rankRaw = row["ecr"]?.trim() ?? "";
+    const name = row["PLAYER NAME"]?.trim() ?? "";
+    const nflTeam = row["TEAM"]?.trim() ?? "";
+    const rankRaw = row["RK"]?.trim() ?? "";
+    const position = stripPositionRank(row["POS"]?.trim() ?? "");
 
     if (!name || !position || rankRaw === "") return [];
 
