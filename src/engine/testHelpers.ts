@@ -6,7 +6,7 @@ export function makePlayer(index: number): Player {
     name: `Player ${index}`,
     position: "RB",
     nflTeam: "NYG",
-    adp: index + 1,
+    rank: index + 1,
   };
 }
 

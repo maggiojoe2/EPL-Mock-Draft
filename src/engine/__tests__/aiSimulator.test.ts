@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import {
-  computeExpectedAdp,
+  computeExpectedRank,
   computeFranchiseTarget,
   computeSaveTarget,
   computeSaveTargetWithMistake,
@@ -12,13 +12,13 @@ import type { Player } from "../../types";
 
 // ── Fixtures ───────────────────────────────────────────────────────────────
 
-function makePlayer(name: string, adp: number, position = "RB"): Player {
+function makePlayer(name: string, rank: number, position = "RB"): Player {
   return {
     id: `${name.toLowerCase().replace(/\s+/g, "-")}`,
     name,
     position,
     nflTeam: "KC",
-    adp,
+    rank,
   };
 }
 
@@ -48,7 +48,7 @@ describe("computeFranchiseTarget", () => {
     expect(target!.id).toBe(p.id);
   });
 
-  it("franchises the best-ADP eligible player when several are eligible", () => {
+  it("franchises the best-rank eligible player when several are eligible", () => {
     const best = makePlayer("Best", 2);
     const mid = makePlayer("Mid", 5);
     const worst = makePlayer("Worst", 9);
@@ -79,7 +79,7 @@ describe("computeFranchiseTarget", () => {
     // save target, D, so it's excluded from both their pairs — leaving them
     // to pair with the only other eligible candidate, C (TE, rank 3). C
     // itself doesn't conflict with D, so C's pair (C + D) beats both A's and
-    // B's, even though C is the worst-ADP eligible candidate.
+    // B's, even though C is the worst-rank eligible candidate.
     const a = makePlayer("A", 1, "RB");
     const b = makePlayer("B", 5, "RB");
     const c = makePlayer("C", 10, "TE");
@@ -94,11 +94,11 @@ describe("computeFranchiseTarget", () => {
     expect(target!.id).toBe(c.id);
   });
 
-  it("franchises the better-ADP candidate when the top two share a position, leaving neither a legal save target", () => {
+  it("franchises the better-rank candidate when the top two share a position, leaving neither a legal save target", () => {
     // X and Y are the only two roster players and share a position, so each
     // excludes the other from its save-candidate search — both pairs
     // contribute zero save-side value, not an error or an exclusion. The
-    // tie resolves on ADP alone.
+    // tie resolves on rank alone.
     const x = makePlayer("X", 1, "RB");
     const y = makePlayer("Y", 2, "RB");
     const target = withoutMistakes(() =>
@@ -111,10 +111,10 @@ describe("computeFranchiseTarget", () => {
     expect(target!.id).toBe(x.id);
   });
 
-  it("breaks a tie between equally-scored pairs toward the lower-ADP franchise candidate", () => {
+  it("breaks a tie between equally-scored pairs toward the lower-rank franchise candidate", () => {
     const a = makePlayer("A", 1, "RB");
     const b = makePlayer("B", 3, "WR");
-    // Both pairs (a+b and b+a) sum to the same combined ADP.
+    // Both pairs (a+b and b+a) sum to the same combined rank.
     const target = withoutMistakes(() =>
       computeFranchiseTarget({
         previousYearRoster: [a, b],
@@ -160,7 +160,7 @@ describe("computeFranchiseTarget", () => {
 // ── computeSaveTarget ────────────────────────────────────────────────────────
 
 describe("computeSaveTarget", () => {
-  it("picks the best-ADP remaining player, excluding the franchise target", () => {
+  it("picks the best-rank remaining player, excluding the franchise target", () => {
     const franchise = makePlayer("Franchise", 1, "QB");
     const best = makePlayer("Best Remaining", 2);
     const worse = makePlayer("Worse Remaining", 5);
@@ -249,7 +249,7 @@ describe("computeSaveTarget", () => {
     expect(after!.id).toBe(nextTarget.id);
   });
 
-  it("excludes a candidate that shares a position with the franchise target, even when it's the best ADP", () => {
+  it("excludes a candidate that shares a position with the franchise target, even when it's the best rank", () => {
     const franchise = makePlayer("Franchise", 1, "QB");
     const sharesPosition = makePlayer("Same Position", 2, "QB");
     const legal = makePlayer("Legal", 3, "RB");
@@ -439,31 +439,31 @@ describe("computeSaveTargetWithMistake", () => {
   });
 });
 
-// ── computeExpectedAdp ───────────────────────────────────────────────────────
+// ── computeExpectedRank ───────────────────────────────────────────────────────
 
-describe("computeExpectedAdp", () => {
+describe("computeExpectedRank", () => {
   it("computes (round - 1) * teamCount + teamPositionInOrder", () => {
-    expect(computeExpectedAdp(1, 1, 12)).toBe(1);
-    expect(computeExpectedAdp(1, 12, 12)).toBe(12);
-    expect(computeExpectedAdp(2, 1, 12)).toBe(13);
-    expect(computeExpectedAdp(15, 7, 12)).toBe((15 - 1) * 12 + 7);
+    expect(computeExpectedRank(1, 1, 12)).toBe(1);
+    expect(computeExpectedRank(1, 12, 12)).toBe(12);
+    expect(computeExpectedRank(2, 1, 12)).toBe(13);
+    expect(computeExpectedRank(15, 7, 12)).toBe((15 - 1) * 12 + 7);
   });
 });
 
 // ── shouldPullback ───────────────────────────────────────────────────────────
 
 describe("shouldPullback", () => {
-  it("accepts when candidate ADP beats (is lower than) the expected round ADP", () => {
+  it("accepts when candidate rank beats (is lower than) the expected round rank", () => {
     const result = withoutMistakes(() => shouldPullback(10, 20));
     expect(result).toBe(true);
   });
 
-  it("declines when candidate ADP does not beat the expected round ADP", () => {
+  it("declines when candidate rank does not beat the expected round rank", () => {
     const result = withoutMistakes(() => shouldPullback(30, 20));
     expect(result).toBe(false);
   });
 
-  it('declines at the exact boundary (equal ADP is not "better")', () => {
+  it('declines at the exact boundary (equal rank is not "better")', () => {
     const result = withoutMistakes(() => shouldPullback(20, 20));
     expect(result).toBe(false);
   });

@@ -9,7 +9,7 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] A pure function computes the expected ADP for a given round/team-position/team-count and returns whether a candidate should be pulled back, per the formula above.
 - [ ] The `pullback` branch of `ADVANCE_SIMULATION` (both the standalone pullback prompt and the pullback-after-save-decline path) uses this function instead of `aiShouldReact`.

@@ -1,6 +1,6 @@
 # Issue 07 — No-franchise-player `lastAvailableRound` fix
 
-Status: ready-for-agent
+Status: done
 
 ## Problem
 

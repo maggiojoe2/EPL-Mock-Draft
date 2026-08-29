@@ -133,8 +133,8 @@ export default function RosterStep({
                                 setPlayerSearch(null);
                               }}
                             >
-                              {p.name} ({p.position}, {p.nflTeam}) — ADP #
-                              {p.adp}
+                              {p.name} ({p.position}, {p.nflTeam}) — rank #
+                              {p.rank}
                             </button>
                           </li>
                         ))}

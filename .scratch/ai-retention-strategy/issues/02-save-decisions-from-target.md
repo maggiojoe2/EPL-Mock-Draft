@@ -10,7 +10,7 @@ The existing structural flow (try save, then fall back toward pullback, then dec
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] The `save` branch of `ADVANCE_SIMULATION` recomputes the team's current save target (via ticket 01's function) rather than reading a value fixed before the draft.
 - [ ] A simulated team invokes its save automatically whenever the picked player matches its current save target, without any value-vs-round-cost check.

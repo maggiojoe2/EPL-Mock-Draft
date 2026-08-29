@@ -10,7 +10,7 @@ function makePlayer(
   position: string,
   nflTeam: string,
 ): Player {
-  return { id, name, position, nflTeam, adp: 1 };
+  return { id, name, position, nflTeam, rank: 1 };
 }
 
 function makeRoster(slots: (Player | null)[]): (Player | null)[] {

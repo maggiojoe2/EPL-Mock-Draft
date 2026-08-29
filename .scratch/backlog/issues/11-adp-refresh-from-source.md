@@ -1,6 +1,8 @@
 # Issue 11 — Easy way to refresh default ADPs from a source website
 
-Status: needs-triage
+Status: resolved
+
+**Resolved by:** `.scratch/player-rankings-refresh/spec.md` — shipped as a maintainer-run script (`npm run update-players`) against a manually-downloaded FantasyPros half-PPR export, not a fully-automated fetch. The manual-download step is accepted as final for this project's scale; no follow-up automation issue is being tracked.
 
 ## Problem
 

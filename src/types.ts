@@ -5,7 +5,7 @@ export interface Player {
   name: string;
   position: string;
   nflTeam: string;
-  adp: number;
+  rank: number;
 }
 
 export interface PickRecord {
@@ -71,7 +71,7 @@ export type DraftMode = "practice" | "watch";
 export type LogActor = "user" | "ai";
 
 /** One `PICK_PLAYER` action, human or simulated. For a simulated ("ai") pick,
- *  also captures the deterministic best-by-ADP comparison point: the
+ *  also captures the deterministic best-by-rank comparison point: the
  *  optimal player, whether the actual pick diverged from it, and (only when
  *  it did) the Gaussian noise magnitude responsible. Human picks carry none
  *  of the optimal-comparison fields — there's no algorithmic reasoning to

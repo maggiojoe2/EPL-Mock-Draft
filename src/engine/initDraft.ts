@@ -10,8 +10,8 @@ export function initDraft(params: {
   const { mode, userTeamIndex, availablePool } = params;
 
   // Pre-place franchise players in round 16 and remove from pool.
-  // Sort ascending by ADP so the best available players appear at the top.
-  let pool = [...availablePool].sort((a, b) => a.adp - b.adp);
+  // Sort ascending by rank so the best available players appear at the top.
+  let pool = [...availablePool].sort((a, b) => a.rank - b.rank);
   const teams = params.teams.map((team) => {
     const lastAvailableRound = team.franchisePlayer ? 15 : 16;
     if (!team.franchisePlayer) return { ...team, lastAvailableRound };

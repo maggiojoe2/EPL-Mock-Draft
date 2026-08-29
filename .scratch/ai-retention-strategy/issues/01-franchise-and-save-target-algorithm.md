@@ -14,7 +14,7 @@ Wire the franchise-target half of this algorithm into `autoSelectFranchise`, so 
 
 **Blocked by:** None — can start immediately
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] A pure function computes the franchise target for a team per the algorithm above (steps 1–5), confined to the top two eligible players.
 - [ ] A pure function computes the current save target for a team per the algorithm above, callable independently and reusable by future tickets.

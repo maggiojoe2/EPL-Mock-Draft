@@ -21,13 +21,13 @@ import type { Player, Team } from "../../types";
 
 // ── Fixtures ───────────────────────────────────────────────────────────────
 
-function makePlayer(name: string, position = "RB", adp = 1): Player {
+function makePlayer(name: string, position = "RB", rank = 1): Player {
   return {
     id: `${name.toLowerCase().replace(/\s+/g, "-")}-${position.toLowerCase()}`,
     name,
     position,
     nflTeam: "KC",
-    adp,
+    rank,
   };
 }
 
@@ -45,7 +45,7 @@ function makeTeam(overrides: Partial<Team> = {}): Team {
   };
 }
 
-const PLAYERS_CSV = `name,position,nfl_team,adp
+const PLAYERS_CSV = `name,position,nfl_team,rank
 Josh Allen,QB,BUF,1
 Saquon Barkley,RB,PHI,2`;
 
@@ -148,7 +148,7 @@ describe("parsePlayerPoolImport", () => {
     const result = parsePlayerPoolImport("garbage,data\n1,2");
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toContain("name, position, nfl_team, adp");
+      expect(result.error).toContain("name, position, nfl_team, rank");
     }
   });
 });

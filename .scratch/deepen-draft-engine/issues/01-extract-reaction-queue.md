@@ -4,7 +4,7 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-human
+**Status:** done
 
 - [x] `reactionQueue.ts` exists under `src/engine/` and exports `buildReactionQueue`, `dequeue`, `resolveReaction`
 - [x] `draftEngine.ts` no longer defines these functions itself — it imports and delegates to `reactionQueue.ts`

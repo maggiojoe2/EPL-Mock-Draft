@@ -4,7 +4,7 @@
 
 **Blocked by:** 01, 02.
 
-**Status:** ready-for-human
+**Status:** done
 
 - [x] `saveReducer.ts` exists under `src/engine/` and exports the `INVOKE_SAVE`/`DECLINE_SAVE` handling logic
 - [x] `draftEngine.ts` no longer defines this logic itself — it imports and delegates to `saveReducer.ts`

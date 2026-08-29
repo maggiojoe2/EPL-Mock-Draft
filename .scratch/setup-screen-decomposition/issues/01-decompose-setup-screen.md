@@ -1,6 +1,6 @@
 # Issue 01 — Decompose the setup screen into tested steps
 
-Status: ready-for-agent
+Status: done
 
 ## Design (settled 2026-08-15, grilling session)
 

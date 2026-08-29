@@ -5,13 +5,13 @@ import type { RosterImport } from "../csvParser";
 
 // ── Fixtures ───────────────────────────────────────────────────────────────
 
-function makePlayer(name: string, position = "RB", adp = 1): Player {
+function makePlayer(name: string, position = "RB", rank = 1): Player {
   return {
     id: `${name.toLowerCase().replace(/\s+/g, "-")}-${position.toLowerCase()}`,
     name,
     position,
     nflTeam: "KC",
-    adp,
+    rank,
   };
 }
 
@@ -175,7 +175,7 @@ describe("autoSelectFranchise", () => {
     expect(result[0].franchisePlayer!.id).toBe(eligible.id);
   });
 
-  it("franchises the best-ADP eligible player when several are eligible", () => {
+  it("franchises the best-rank eligible player when several are eligible", () => {
     const best = makePlayer("Best Guy", "RB", 2);
     const worse = makePlayer("Worse Guy", "WR", 9);
     const pool: Player[] = [best, worse];
@@ -198,7 +198,7 @@ describe("autoSelectFranchise", () => {
     ]);
     const teams = buildTeamsFromImport(roster, pool);
     // Pin Math.random above the mistake-noise threshold so the optimal
-    // (best-ADP) candidate is chosen deterministically.
+    // (best-rank) candidate is chosen deterministically.
     const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0.99);
     try {
       const result = autoSelectFranchise(teams, null);
@@ -264,7 +264,7 @@ describe("autoSelectFranchise", () => {
     expect(result[0].franchisePlayer).toBeNull();
   });
 
-  it("franchises the eligible candidate with the best overall pair value, not just the best-ADP one, when a position conflict blocks the naive choice", () => {
+  it("franchises the eligible candidate with the best overall pair value, not just the best-rank one, when a position conflict blocks the naive choice", () => {
     // Best (RB) and mid (RB) share a position with the roster's cheapest
     // save target, so each excludes it from its own pairing; worst (TE)
     // doesn't conflict with it, so worst's pair (worst + cheapSave) beats

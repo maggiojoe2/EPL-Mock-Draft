@@ -446,10 +446,10 @@ describe("pullback mechanics", () => {
     }
   });
 
-  it("pullbackOptions are sorted ascending by ADP (best player first)", () => {
+  it("pullbackOptions are sorted ascending by rank (best player first)", () => {
     const pickedPlayer = makePlayer(0);
-    const worseOption = makePlayer(50); // higher adp = worse
-    const betterOption = makePlayer(10); // lower adp = better
+    const worseOption = makePlayer(50); // higher rank = worse
+    const betterOption = makePlayer(10); // lower rank = better
     const ownerTeam = makeTeam({
       name: "Owner",
       previousYearRoster: [pickedPlayer, worseOption, betterOption],

@@ -1,0 +1,19 @@
+# 02 — Shared normalize/validate module + `update-players` dev script
+
+**What to build:** A maintainer can run `npm run update-players` to pull current player-ranking data from the live source and regenerate the bundled `public/defaults/players.csv`, with the fetch-and-normalize logic implemented once in a shared module (not duplicated later by the live in-app fetch in ticket 03). The script refuses to overwrite the bundled file if the fetched data looks malformed, so a source-format change can't silently ship broken defaults.
+
+**Blocked by:** 01 — Rename `adp` to `rank` throughout the app
+
+**Status:** superseded
+
+**Superseded by:** 06 — Rebuild `update-players` for the manual FantasyPros half-PPR export. This ticket's implementation sourced full-PPR data over HTTP from a live URL; the project needs half-PPR data, which has no fetchable source, so this mechanism was rebuilt from scratch around a manually-downloaded CSV. See `.scratch/player-rankings-refresh/spec.md` ("What changed and why").
+
+- [x] A pure, directly-testable normalize/validate module takes raw source CSV text (from `https://raw.githubusercontent.com/dynastyprocess/data/master/files/db_fpecr_latest.csv`) and produces `Player[]` (`id`, `name`, `position`, `nflTeam`, `rank`) plus sanity-check results
+- [x] Sanity checks cover: minimum row count (~300), required columns present/non-empty, position codes within the known set (QB/RB/WR/TE/K/DST)
+- [x] `tsx` is added as a devDependency; a new `scripts/update-players.ts` is added and wired to `npm run update-players`
+- [x] Running the script fetches the source, normalizes it via the shared module, and — only if sanity checks pass — overwrites `public/defaults/players.csv`
+- [x] If the fetch fails or sanity checks fail, the script exits non-zero with a clear error message and leaves `public/defaults/players.csv` untouched
+- [x] The script does not touch `test-data/players.csv`
+- [x] The shared module is unit-tested the way `csvParser.test.ts` tests `parsePlayerPoolCsv`/`parseRosterCsv` — raw CSV text in, asserted `Player[]`/sanity-check results out, no mocking
+
+**Implementation note:** the dynastyprocess mirror doesn't separately label a half-PPR "overall" view (only a PPR one, `/nfl/rankings/ppr-cheatsheets.php`), so that's the `fp_page` value the normalize module filters to — see the comment in `src/setup/sourcePlayers.ts`. `Player.id` still uses the existing `playerIdFromNamePos` synthesis (not the source's `id` field) — switching to the source ID is ticket 04's job.

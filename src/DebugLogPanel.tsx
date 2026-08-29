@@ -80,15 +80,16 @@ function DebugLogEntryRow({
           <span className="debug-log-seq">#{entry.seq + 1}</span>
           <span className="debug-log-summary">
             {actorBadge} Round {entry.round} · <strong>{teamName}</strong>{" "}
-            picked <strong>{entry.player.name}</strong> (ADP {entry.player.adp})
+            picked <strong>{entry.player.name}</strong> (rank{" "}
+            {entry.player.rank})
           </span>
           {entry.actor === "ai" && entry.optimalPlayer && (
             <span
               className={`debug-log-detail${entry.diverged ? " debug-log-detail--diverged" : ""}`}
             >
               {entry.diverged
-                ? `↪ Best-by-ADP would have been ${entry.optimalPlayer.name} (ADP ${entry.optimalPlayer.adp}) — picked at ADP ${entry.player.adp}, noise ${entry.noise?.toFixed(2)}`
-                : "✓ Matched best-by-ADP"}
+                ? `↪ Best-by-rank would have been ${entry.optimalPlayer.name} (rank ${entry.optimalPlayer.rank}) — picked at rank ${entry.player.rank}, noise ${entry.noise?.toFixed(2)}`
+                : "✓ Matched best-by-rank"}
             </span>
           )}
         </>

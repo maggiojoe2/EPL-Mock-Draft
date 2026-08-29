@@ -5,7 +5,7 @@ import type { LogEntry, Player } from "../../types";
 // ── helpers ────────────────────────────────────────────────────────────────
 
 function makePlayer(id: string, name: string): Player {
-  return { id, name, position: "MID", nflTeam: "ARS", adp: 1 };
+  return { id, name, position: "MID", nflTeam: "ARS", rank: 1 };
 }
 
 describe("toDebugLogJson", () => {
