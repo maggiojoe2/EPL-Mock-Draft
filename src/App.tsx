@@ -326,7 +326,7 @@ function PlayerList({
             className={`player-row${isPrevYear ? " player-row--prev-year" : ""}`}
             title={isPrevYear ? "Previous-year player" : undefined}
           >
-            <span className="adp">#{player.adp}</span>
+            <span className="rank">#{player.rank}</span>
             <span className="pos">{player.position}</span>
             <span className="name">{player.name}</span>
             <span className="nfl-team">{player.nflTeam}</span>

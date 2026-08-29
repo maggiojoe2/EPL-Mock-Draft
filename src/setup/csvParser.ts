@@ -6,7 +6,7 @@ import type { Player } from "../types";
 /** Single source of truth for the expected CSV column names, shown in error
  *  messages and in the "Expected CSV column names" hint block. */
 export const CSV_COLUMNS = {
-  playerPool: "name, position, nfl_team, adp",
+  playerPool: "name, position, nfl_team, rank",
   roster: "team_name, player_name, franchise_eligible, previously_saved",
 } as const;
 
@@ -43,7 +43,7 @@ function parseBool(value: string | undefined): boolean {
 
 /**
  * Parse a FantasyPros-style player pool CSV.
- * Expected columns: name, position, nfl_team, adp
+ * Expected columns: name, position, nfl_team, rank
  */
 export function parsePlayerPoolCsv(csvText: string): Player[] {
   const { data } = Papa.parse<Record<string, string>>(csvText, {
@@ -55,11 +55,11 @@ export function parsePlayerPoolCsv(csvText: string): Player[] {
     const name = row["name"]?.trim() ?? "";
     const position = row["position"]?.trim() ?? "";
     const nflTeam = row["nfl_team"]?.trim() ?? "";
-    const adpRaw = row["adp"]?.trim() ?? "";
+    const rankRaw = row["rank"]?.trim() ?? "";
 
     if (!name || !position) return [];
 
-    const adp = adpRaw !== "" ? Number(adpRaw) : NaN;
+    const rank = rankRaw !== "" ? Number(rankRaw) : NaN;
 
     return [
       {
@@ -67,7 +67,7 @@ export function parsePlayerPoolCsv(csvText: string): Player[] {
         name,
         position,
         nflTeam,
-        adp: Number.isFinite(adp) ? adp : 9999,
+        rank: Number.isFinite(rank) ? rank : 9999,
       },
     ];
   });

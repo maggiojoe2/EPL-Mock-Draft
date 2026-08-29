@@ -39,7 +39,7 @@ export function buildReactionQueue(
       !conflictsWithFranchisePosition(team, pickedPlayer);
 
     // Pullback options: any other previous-year player still in the pool.
-    // Sorted ascending by ADP so the AI's "highest-ADP" pick (opts[0]) and the
+    // Sorted ascending by rank so the AI's "highest-rank" pick (opts[0]) and the
     // practice-mode modal both present the best remaining option first.
     const pullbackOptions = team.previousYearRoster
       .filter(
@@ -47,7 +47,7 @@ export function buildReactionQueue(
           state.availablePool.some((ap) => ap.id === p.id) &&
           p.id !== pickedPlayer.id,
       )
-      .sort((a, b) => a.adp - b.adp);
+      .sort((a, b) => a.rank - b.rank);
 
     if (isSaveable) {
       // A team with an unused save can save the picked player, pull back a

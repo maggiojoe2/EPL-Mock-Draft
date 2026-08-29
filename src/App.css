@@ -258,7 +258,7 @@ body {
   flex-shrink: 0;
 }
 
-.adp {
+.rank {
   color: var(--muted);
   font-size: 11px;
   min-width: 28px;

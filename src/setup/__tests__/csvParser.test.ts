@@ -5,7 +5,7 @@ import { parsePlayerPoolCsv, parseRosterCsv } from "../csvParser";
 
 describe("parsePlayerPoolCsv", () => {
   it("returns a Player for each data row", () => {
-    const csv = `name,position,nfl_team,adp
+    const csv = `name,position,nfl_team,rank
 Patrick Mahomes,QB,KC,1
 Justin Jefferson,WR,MIN,2`;
     const players = parsePlayerPoolCsv(csv);
@@ -13,17 +13,17 @@ Justin Jefferson,WR,MIN,2`;
   });
 
   it("maps columns to Player fields", () => {
-    const csv = `name,position,nfl_team,adp
+    const csv = `name,position,nfl_team,rank
 Travis Kelce,TE,KC,3`;
     const [p] = parsePlayerPoolCsv(csv);
     expect(p.name).toBe("Travis Kelce");
     expect(p.position).toBe("TE");
     expect(p.nflTeam).toBe("KC");
-    expect(p.adp).toBe(3);
+    expect(p.rank).toBe(3);
   });
 
   it("generates stable IDs based on name+position", () => {
-    const csv = `name,position,nfl_team,adp
+    const csv = `name,position,nfl_team,rank
 CeeDee Lamb,WR,DAL,4`;
     const [p1] = parsePlayerPoolCsv(csv);
     const [p2] = parsePlayerPoolCsv(csv);
@@ -32,22 +32,22 @@ CeeDee Lamb,WR,DAL,4`;
   });
 
   it("IDs are unique across different players", () => {
-    const csv = `name,position,nfl_team,adp
+    const csv = `name,position,nfl_team,rank
 Saquon Barkley,RB,PHI,5
 Derrick Henry,RB,DAL,6`;
     const [p1, p2] = parsePlayerPoolCsv(csv);
     expect(p1.id).not.toBe(p2.id);
   });
 
-  it("treats non-numeric adp as 9999", () => {
-    const csv = `name,position,nfl_team,adp
+  it("treats non-numeric rank as 9999", () => {
+    const csv = `name,position,nfl_team,rank
 Unknown Player,WR,FA,`;
     const [p] = parsePlayerPoolCsv(csv);
-    expect(p.adp).toBe(9999);
+    expect(p.rank).toBe(9999);
   });
 
   it("skips rows missing required fields", () => {
-    const csv = `name,position,nfl_team,adp
+    const csv = `name,position,nfl_team,rank
 ,RB,KC,7
 Valid Player,RB,SF,8`;
     const players = parsePlayerPoolCsv(csv);
@@ -56,7 +56,7 @@ Valid Player,RB,SF,8`;
   });
 
   it("handles Windows-style line endings", () => {
-    const csv = `name,position,nfl_team,adp\r\nJosh Allen,QB,BUF,2`;
+    const csv = `name,position,nfl_team,rank\r\nJosh Allen,QB,BUF,2`;
     const players = parsePlayerPoolCsv(csv);
     expect(players).toHaveLength(1);
     expect(players[0].name).toBe("Josh Allen");

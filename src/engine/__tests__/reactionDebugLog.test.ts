@@ -156,7 +156,7 @@ function withMistakes<T>(fn: () => T): T {
 
 describe("debugLog — simulated INVOKE_SAVE / DECLINE_SAVE", () => {
   it("records actor 'ai' with chosen === optimal and no divergence when no mistake fires", () => {
-    const target: Player = makePlayer(0); // best ADP on the roster
+    const target: Player = makePlayer(0); // best rank on the roster
     const other: Player = makePlayer(50);
     const ownerTeam = makeTeam({
       name: "Owner",
@@ -268,7 +268,7 @@ describe("debugLog — simulated INVOKE_SAVE / DECLINE_SAVE", () => {
   it("DECLINE_SAVE records the divergence when the picked player isn't the save target and no pullback fires", () => {
     const trueTarget: Player = makePlayer(0);
     const player: Player = makePlayer(99);
-    const pullbackOption: Player = makePlayer(250); // adp 251 — well above the round-15 expected ADP
+    const pullbackOption: Player = makePlayer(250); // rank 251 — well above the round-15 expected rank
     const ownerTeam = makeTeam({
       name: "Owner",
       previousYearRoster: [player, trueTarget],
@@ -333,7 +333,7 @@ describe("debugLog — simulated INVOKE_SAVE / DECLINE_SAVE", () => {
   });
 
   it("DECLINE_SAVE records mistakeFired when the mistake substitution still doesn't match the picked player", () => {
-    const target: Player = makePlayer(0); // best ADP — the algorithm's undisturbed top choice
+    const target: Player = makePlayer(0); // best rank — the algorithm's undisturbed top choice
     const mistakeCandidate: Player = makePlayer(1); // second-best — the mistake substitute
     const declinedPlayer: Player = makePlayer(2); // the player actually picked — matches neither
     const ownerTeam = makeTeam({
@@ -367,7 +367,7 @@ describe("debugLog — simulated INVOKE_SAVE / DECLINE_SAVE", () => {
     // Ticket 03: the mistake-affected save-decision resolution lands on
     // `mistakeCandidate` (the mistake substitute), while the pullback
     // fallback's exclusion check recomputes the target with no mistake
-    // applied — `target`, the deterministic best-by-ADP candidate — so the
+    // applied — `target`, the deterministic best-by-rank candidate — so the
     // same team logs two different targets across the two computations.
     expect(next.debugLog).toHaveLength(3);
     expect(next.debugLog[0]).toEqual({
@@ -403,8 +403,8 @@ describe("debugLog — simulated INVOKE_SAVE / DECLINE_SAVE", () => {
 describe("debugLog — simulated INVOKE_PULLBACK / DECLINE_PULLBACK", () => {
   it("records actor 'ai' with chosen === optimal and no divergence when no mistake fires", () => {
     const pickedPlayer: Player = makePlayer(0); // already saved previously
-    const saveTargetPlayer: Player = makePlayer(1); // best remaining ADP — excluded, not offered here
-    const pullbackOption: Player = makePlayer(49); // adp 50, well under round-15 expected ADP of 170
+    const saveTargetPlayer: Player = makePlayer(1); // best remaining rank — excluded, not offered here
+    const pullbackOption: Player = makePlayer(49); // rank 50, well under round-15 expected rank of 170
     const ownerTeam = makeTeam({
       name: "Owner",
       previousYearRoster: [pickedPlayer, saveTargetPlayer, pullbackOption],
@@ -459,7 +459,7 @@ describe("debugLog — simulated INVOKE_PULLBACK / DECLINE_PULLBACK", () => {
   it("records the divergence and mistakeFired when a mistake flips a below-bar candidate to accepted", () => {
     const pickedPlayer: Player = makePlayer(0);
     const saveTargetPlayer: Player = makePlayer(1); // distinct save target, excluded from pullback candidates
-    const pullbackOption: Player = makePlayer(250); // adp 251 — well above expected ADP; pure evaluation rejects
+    const pullbackOption: Player = makePlayer(250); // rank 251 — well above expected rank; pure evaluation rejects
     const ownerTeam = makeTeam({
       name: "Owner",
       previousYearRoster: [pickedPlayer, saveTargetPlayer, pullbackOption],
@@ -511,7 +511,7 @@ describe("debugLog — simulated INVOKE_PULLBACK / DECLINE_PULLBACK", () => {
 
   it("DECLINE_PULLBACK records chosen === optimal (both null) when no candidate clears the bar and no mistake fires", () => {
     const pickedPlayer: Player = makePlayer(0);
-    const pullbackOption: Player = makePlayer(250); // adp 251 — well above the round-15 expected ADP
+    const pullbackOption: Player = makePlayer(250); // rank 251 — well above the round-15 expected rank
     const ownerTeam = makeTeam({
       name: "Owner",
       previousYearRoster: [pickedPlayer, pullbackOption],
@@ -567,7 +567,7 @@ describe("debugLog — simulated INVOKE_PULLBACK / DECLINE_PULLBACK", () => {
   it("DECLINE_PULLBACK records mistakeFired and the divergence when a mistake rejects a candidate that clears the bar", () => {
     const pickedPlayer: Player = makePlayer(0);
     const saveTargetPlayer: Player = makePlayer(1); // distinct save target, excluded from pullback candidates
-    const pullbackOption: Player = makePlayer(49); // adp 50, well under round-15 expected ADP of 170 — pure evaluation accepts
+    const pullbackOption: Player = makePlayer(49); // rank 50, well under round-15 expected rank of 170 — pure evaluation accepts
     const ownerTeam = makeTeam({
       name: "Owner",
       previousYearRoster: [pickedPlayer, saveTargetPlayer, pullbackOption],

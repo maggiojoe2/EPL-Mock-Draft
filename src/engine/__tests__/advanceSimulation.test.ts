@@ -169,10 +169,10 @@ describe("ADVANCE_SIMULATION", () => {
 
   // ── AI pullback decision (standalone prompt): round-cost value rule ──────
 
-  it("a standalone pullback prompt pulls back a candidate whose ADP beats the expected round ADP", () => {
+  it("a standalone pullback prompt pulls back a candidate whose rank beats the expected round rank", () => {
     const pickedPlayer: Player = makePlayer(0); // already saved previously — this pick can't be saved again
-    const saveTargetPlayer: Player = makePlayer(1); // best remaining ADP — the current save target, not offered here
-    const pullbackOption: Player = makePlayer(49); // adp 50, well under the round-15 expected ADP of 170
+    const saveTargetPlayer: Player = makePlayer(1); // best remaining rank — the current save target, not offered here
+    const pullbackOption: Player = makePlayer(49); // rank 50, well under the round-15 expected rank of 170
     const ownerTeam = makeTeam({
       name: "Owner",
       previousYearRoster: [pickedPlayer, saveTargetPlayer, pullbackOption],
@@ -205,9 +205,9 @@ describe("ADVANCE_SIMULATION", () => {
     }
   });
 
-  it("a standalone pullback prompt declines when no candidate beats the expected round ADP", () => {
+  it("a standalone pullback prompt declines when no candidate beats the expected round rank", () => {
     const pickedPlayer: Player = makePlayer(0);
-    const pullbackOption: Player = makePlayer(250); // adp 251, well over the round-15 expected ADP of 170
+    const pullbackOption: Player = makePlayer(250); // rank 251, well over the round-15 expected rank of 170
     const ownerTeam = makeTeam({
       name: "Owner",
       previousYearRoster: [pickedPlayer, pullbackOption],
@@ -242,7 +242,7 @@ describe("ADVANCE_SIMULATION", () => {
 
   // ── AI save decision: target-match, not probability ──────────────────────
   //
-  // The save branch runs no ADP-probability check; it invokes the save iff
+  // The save branch runs no rank-probability check; it invokes the save iff
   // the picked player matches the team's current save target (via
   // computeSaveTargetWithMistake). The *fallback* to pullback, once a save
   // is declined, uses the round-cost value comparison (shouldPullback).
@@ -259,7 +259,7 @@ describe("ADVANCE_SIMULATION", () => {
   }
 
   it("invokes the save automatically when the picked player matches the current save target", () => {
-    const target: Player = makePlayer(0); // best ADP on the roster
+    const target: Player = makePlayer(0); // best rank on the roster
     const other: Player = makePlayer(50);
     const ownerTeam = makeTeam({
       name: "Owner",
@@ -294,8 +294,8 @@ describe("ADVANCE_SIMULATION", () => {
   });
 
   it("AI falls back to pulling back a value-positive candidate when the picked player is not the save target", () => {
-    const trueTarget: Player = makePlayer(0); // best ADP → the real save target, excluded from pullback
-    const otherCandidate: Player = makePlayer(49); // adp 50 — clears the round-cost bar, not the save target
+    const trueTarget: Player = makePlayer(0); // best rank → the real save target, excluded from pullback
+    const otherCandidate: Player = makePlayer(49); // rank 50 — clears the round-cost bar, not the save target
     const player: Player = makePlayer(99); // the (worse) player actually picked
     const ownerTeam = makeTeam({
       name: "Owner",
@@ -316,7 +316,7 @@ describe("ADVANCE_SIMULATION", () => {
         pickingTeamIndex: 0,
         reactingTeamIndex: 1,
         player,
-        // ADP-sorted, best first — trueTarget precedes otherCandidate, but
+        // Rank-sorted, best first — trueTarget precedes otherCandidate, but
         // trueTarget is the save target and must be skipped for pullback.
         pullbackOptions: [trueTarget, otherCandidate],
       },
@@ -325,7 +325,7 @@ describe("ADVANCE_SIMULATION", () => {
 
     // The save target (trueTarget) doesn't match the picked player, so the
     // save is declined; the fallback to pullback now runs the round-cost
-    // value comparison. Team 1 at round 15 with 12 teams has an expected ADP
+    // value comparison. Team 1 at round 15 with 12 teams has an expected rank
     // of (15-1)*12+2 = 170, comfortably above otherCandidate's 50, so it's
     // worth pulling back. Random pinned above the mistake threshold so the
     // undisturbed rule applies.
@@ -342,7 +342,7 @@ describe("ADVANCE_SIMULATION", () => {
   });
 
   it("does not independently evaluate the current save target for pullback (declines when it is the only option)", () => {
-    const trueTarget: Player = makePlayer(0); // best ADP → the save target, and the only pullback option
+    const trueTarget: Player = makePlayer(0); // best rank → the save target, and the only pullback option
     const player: Player = makePlayer(99);
     const ownerTeam = makeTeam({
       name: "Owner",
@@ -371,7 +371,7 @@ describe("ADVANCE_SIMULATION", () => {
     const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0.99);
     try {
       const next = draftEngine(state, { type: "ADVANCE_SIMULATION" });
-      // trueTarget's ADP (1) would easily clear the round-cost bar, but it's
+      // trueTarget's rank (1) would easily clear the round-cost bar, but it's
       // the current save target and must not be pulled back in this decision.
       expect(next.teams[1].roster[15]).toBeNull();
       expect(next.teams[1].saveUsedThisDraft).toBe(false);
@@ -385,7 +385,7 @@ describe("ADVANCE_SIMULATION", () => {
   it("AI declines entirely when the picked player is not the save target and no pullback candidate clears the value bar", () => {
     const trueTarget: Player = makePlayer(0);
     const player: Player = makePlayer(99);
-    const pullbackOption: Player = makePlayer(250); // adp 251 — well above the round-15 expected ADP
+    const pullbackOption: Player = makePlayer(250); // rank 251 — well above the round-15 expected rank
     const ownerTeam = makeTeam({
       name: "Owner",
       previousYearRoster: [player, trueTarget],
@@ -423,7 +423,7 @@ describe("ADVANCE_SIMULATION", () => {
   });
 
   it("mistake noise substitutes the next-best saveable candidate as the effective save target", () => {
-    const best: Player = makePlayer(0); // best ADP — the algorithm's undisturbed top choice
+    const best: Player = makePlayer(0); // best rank — the algorithm's undisturbed top choice
     const nextBest: Player = makePlayer(1); // second-best — the mistake substitute, and what's picked
     const ownerTeam = makeTeam({
       name: "Owner",
@@ -463,7 +463,7 @@ describe("ADVANCE_SIMULATION", () => {
   });
 
   it("recomputes the save target fresh rather than reusing a value fixed before the draft", () => {
-    const target: Player = makePlayer(0); // best ADP on the roster
+    const target: Player = makePlayer(0); // best rank on the roster
     const other: Player = makePlayer(50);
     const basePrompt = {
       kind: "save" as const,
@@ -559,17 +559,17 @@ describe("ADVANCE_SIMULATION", () => {
   });
 });
 
-// ── initDraft: pool is ADP-sorted ─────────────────────────────────────────────
+// ── initDraft: pool is rank-sorted ─────────────────────────────────────────────
 
-describe("initDraft ADP sort", () => {
-  it("available pool is sorted ascending by ADP after initDraft", async () => {
+describe("initDraft rank sort", () => {
+  it("available pool is sorted ascending by rank after initDraft", async () => {
     const { initDraft } = await import("../initDraft");
-    // Provide players in reverse ADP order
+    // Provide players in reverse rank order
     const players = [
-      makePlayer(9), // adp 10
-      makePlayer(4), // adp 5
-      makePlayer(0), // adp 1
-      makePlayer(2), // adp 3
+      makePlayer(9), // rank 10
+      makePlayer(4), // rank 5
+      makePlayer(0), // rank 1
+      makePlayer(2), // rank 3
     ];
     const teams = Array.from({ length: 2 }, (_, i) =>
       makeTeam({ name: `Team ${i}` }),
@@ -580,8 +580,8 @@ describe("initDraft ADP sort", () => {
       teams,
       availablePool: players,
     });
-    const adps = state.availablePool.map((p) => p.adp);
-    expect(adps).toEqual([...adps].sort((a, b) => a - b));
+    const ranks = state.availablePool.map((p) => p.rank);
+    expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
   });
 });
 

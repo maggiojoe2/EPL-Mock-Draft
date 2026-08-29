@@ -9,22 +9,22 @@ function gaussianNoise(): number {
 
 export interface AiPickResult {
   player: Player;
-  /** The σ-scaled noise (Gaussian draw × 5, in ADP-rank units) actually
-   *  added to the winning player's ADP to produce its score — the same
+  /** The σ-scaled noise (Gaussian draw × 5, in rank units) actually
+   *  added to the winning player's rank to produce its score — the same
    *  units as the score comparison itself, so the debug log's "why" for a
    *  divergence reads as the real rank shift rather than the pre-scale
    *  Gaussian draw. */
   noise: number;
 }
 
-/** AI picks the best available player by ADP with Gaussian noise (σ = 5 ranks),
+/** AI picks the best available player by rank with Gaussian noise (σ = 5 ranks),
  *  also returning the scaled noise that produced the winning score. Returns
  *  null if the pool is empty. */
 export function aiPickPlayerWithNoise(pool: Player[]): AiPickResult | null {
   if (pool.length === 0) return null;
   const scored = pool.map((p) => {
     const noise = gaussianNoise() * 5;
-    return { player: p, noise, score: p.adp + noise };
+    return { player: p, noise, score: p.rank + noise };
   });
   scored.sort((a, b) => a.score - b.score);
   return { player: scored[0].player, noise: scored[0].noise };
@@ -43,12 +43,12 @@ export function isMistake(): boolean {
   return Math.random() < MISTAKE_PROBABILITY;
 }
 
-/** Best (lowest-ADP) player in the list, or null if empty. Reused as the
+/** Best (lowest-rank) player in the list, or null if empty. Reused as the
  *  deterministic "optimal" comparison point wherever noisy AI decisions need
  *  one — the debug log's pick entries included. */
-export function bestByAdp(players: Player[]): Player | null {
+export function bestByRank(players: Player[]): Player | null {
   if (players.length === 0) return null;
-  return players.reduce((best, p) => (p.adp < best.adp ? p : best));
+  return players.reduce((best, p) => (p.rank < best.rank ? p : best));
 }
 
 /** Whether `candidate` shares a `position` with `team`'s declared franchise
@@ -98,11 +98,11 @@ type FranchiseTeam = Pick<
   "previousYearRoster" | "franchiseEligibleIds" | "saveHistory"
 >;
 
-/** A monotonically decreasing function of ADP — lower ADP (better player)
+/** A monotonically decreasing function of rank — lower rank (better player)
  *  scores higher. Only ever used to compare pairs against each other, so its
- *  absolute scale doesn't matter, only that it's decreasing in ADP. */
-function adpValue(adp: number): number {
-  return -adp;
+ *  absolute scale doesn't matter, only that it's decreasing in rank. */
+function rankValue(rank: number): number {
+  return -rank;
 }
 
 type SaveTeam = Pick<Team, "previousYearRoster" | "saveHistory">;
@@ -110,7 +110,7 @@ type SaveTeam = Pick<Team, "previousYearRoster" | "saveHistory">;
 /** Save-eligible candidates for `franchiseTarget` (excluding it and anyone
  *  already in save history), further excluding anyone who shares a position
  *  with `franchiseTarget` (a save may never double up the franchise slot's
- *  position). Sorted ascending by ADP — best first. */
+ *  position). Sorted ascending by rank — best first. */
 function saveCandidates(
   team: SaveTeam,
   franchiseTarget: Player | null,
@@ -126,16 +126,16 @@ function saveCandidates(
         ),
     )
     .slice()
-    .sort((a, b) => a.adp - b.adp);
+    .sort((a, b) => a.rank - b.rank);
 }
 
 /**
  * Computes a team's franchise target by searching every franchise-eligible
  * candidate `F` for the one whose best legal save target (`saveCandidates(team,
- * F)[0]`) pairs with it for the highest combined ADP-based value — not just
+ * F)[0]`) pairs with it for the highest combined rank-based value — not just
  * comparing the top two eligible players. A candidate with no legal save
  * target is still comparable (contributes zero save-side value, not a
- * penalty). Ties go to the lower-ADP `F`. Subject to mistake noise: on a
+ * penalty). Ties go to the lower-rank `F`. Subject to mistake noise: on a
  * mistake draw, the second-best pair's `F` stands in for the best, falling
  * back to the best when there's no second eligible candidate.
  *
@@ -145,7 +145,7 @@ export function computeFranchiseTarget(team: FranchiseTeam): Player | null {
   const eligible = team.previousYearRoster
     .filter((p) => team.franchiseEligibleIds.has(p.id))
     .slice()
-    .sort((a, b) => a.adp - b.adp);
+    .sort((a, b) => a.rank - b.rank);
 
   if (eligible.length === 0) return null;
 
@@ -153,10 +153,10 @@ export function computeFranchiseTarget(team: FranchiseTeam): Player | null {
     .map((F) => {
       const saveTarget = saveCandidates(team, F)[0] ?? null;
       const score =
-        adpValue(F.adp) + (saveTarget ? adpValue(saveTarget.adp) : 0);
+        rankValue(F.rank) + (saveTarget ? rankValue(saveTarget.rank) : 0);
       return { F, score };
     })
-    .sort((a, b) => b.score - a.score || a.F.adp - b.F.adp);
+    .sort((a, b) => b.score - a.score || a.F.rank - b.F.rank);
 
   // Mistake noise substitutes the second-best pair's franchise candidate for
   // the best, falling back to the best when there's no second candidate.
@@ -166,7 +166,7 @@ export function computeFranchiseTarget(team: FranchiseTeam): Player | null {
 }
 
 /**
- * Computes a team's current save target: the best-ADP player on its
+ * Computes a team's current save target: the best-rank player on its
  * previous-year roster, excluding the given franchise target, that isn't
  * already in its save history. Pure and stateless, so callers get dynamic
  * recomputation for free by calling it fresh whenever a save decision is
@@ -197,7 +197,7 @@ export interface SaveDecision {
 
 /**
  * Computes a team's current save target with mistake noise applied: on a
- * mistake draw, the next-best saveable candidate (by ADP) stands in for the
+ * mistake draw, the next-best saveable candidate (by rank) stands in for the
  * algorithm's top choice for this one decision. Used at the point a save
  * decision is actually made, so it never gets baked into `computeSaveTarget`
  * itself (which stays deterministic for callers like the swap computation).
@@ -227,12 +227,12 @@ export function computeSaveTargetWithMistake(
 }
 
 /**
- * Expected ADP of the roster slot a pullback (or save) would consume — the
- * ADP rank a team drafting at its fixed non-snake position would expect from
+ * Expected rank of the roster slot a pullback (or save) would consume — the
+ * rank a team drafting at its fixed non-snake position would expect from
  * a normal pick at that round: `(round - 1) * teamCount + teamPositionInOrder`.
  * `teamPositionInOrder` is 1-indexed.
  */
-export function computeExpectedAdp(
+export function computeExpectedRank(
   round: number,
   teamPositionInOrder: number,
   teamCount: number,
@@ -250,7 +250,7 @@ export interface PullbackStepDecision {
 /**
  * Whether a pullback candidate is worth more than the normal pick the team
  * would otherwise get with the roster slot the pullback would consume: true
- * when `candidateAdp` is better (lower) than `expectedAdp`. Subject to
+ * when `candidateRank` is better (lower) than `expectedRank`. Subject to
  * mistake noise, which — since pullback is a live accept/decline call rather
  * than a choice among candidates — nudges the outcome to the wrong side of
  * the threshold for this one decision instead of substituting a candidate.
@@ -258,10 +258,10 @@ export interface PullbackStepDecision {
  * need a second, redundant `isMistake()` draw to know whether it fired.
  */
 export function computePullbackStepDecision(
-  candidateAdp: number,
-  expectedAdp: number,
+  candidateRank: number,
+  expectedRank: number,
 ): PullbackStepDecision {
-  const optimal = candidateAdp < expectedAdp;
+  const optimal = candidateRank < expectedRank;
   const mistakeFired = isMistake();
   return { result: mistakeFired ? !optimal : optimal, mistakeFired };
 }
@@ -270,8 +270,8 @@ export function computePullbackStepDecision(
  *  need the resulting accept/decline call, not whether the mistake roll
  *  fired. */
 export function shouldPullback(
-  candidateAdp: number,
-  expectedAdp: number,
+  candidateRank: number,
+  expectedRank: number,
 ): boolean {
-  return computePullbackStepDecision(candidateAdp, expectedAdp).result;
+  return computePullbackStepDecision(candidateRank, expectedRank).result;
 }

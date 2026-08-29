@@ -79,7 +79,7 @@ sub-modules:
   isn't picking (watch mode, or the non-user teams in practice mode),
   calling back into `draftEngine` for each simulated action so the same
   rules apply uniformly. `aiSimulator.ts` supplies the AI's decisions
-  (ADP-with-noise picks, save/pullback value judgments).
+  (rank-with-noise picks, save/pullback value judgments).
 
 `draftEngine` and its sub-reducers are all pure functions over `DraftState`;
 `App.tsx`'s `DraftView` is the only place that wraps this in `useReducer` and

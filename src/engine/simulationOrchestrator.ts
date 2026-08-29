@@ -9,8 +9,8 @@ import type {
 import { TOTAL_ROUNDS } from "../constants";
 import {
   aiPickPlayerWithNoise,
-  bestByAdp,
-  computeExpectedAdp,
+  bestByRank,
+  computeExpectedRank,
   computePullbackStepDecision,
   computeSaveDecision,
   computeSaveTarget,
@@ -41,7 +41,7 @@ export interface PullbackEvaluation {
   saveTarget: Player | null;
 }
 
-/** Evaluates the pullback candidates (options are ADP-sorted, best first)
+/** Evaluates the pullback candidates (options are rank-sorted, best first)
  *  against the round-cost value comparison, skipping the team's current save
  *  target — that player is handled entirely by the save branch and never
  *  independently evaluated for pullback in the same decision. `round` is the
@@ -56,13 +56,17 @@ function evaluatePullbackDecision(
   teamCount: number,
 ): PullbackEvaluation {
   const saveTarget = computeSaveTarget(team, team.franchisePlayer);
-  const expectedAdp = computeExpectedAdp(round, teamPositionInOrder, teamCount);
+  const expectedRank = computeExpectedRank(
+    round,
+    teamPositionInOrder,
+    teamCount,
+  );
   const candidates = options.filter((c) => c.id !== saveTarget?.id);
 
   let chosen: Player | null = null;
   let mistakeFired = false;
   for (const candidate of candidates) {
-    const step = computePullbackStepDecision(candidate.adp, expectedAdp);
+    const step = computePullbackStepDecision(candidate.rank, expectedRank);
     if (step.mistakeFired) mistakeFired = true;
     if (step.result) {
       chosen = candidate;
@@ -70,7 +74,7 @@ function evaluatePullbackDecision(
     }
   }
 
-  const optimal = candidates.find((c) => c.adp < expectedAdp) ?? null;
+  const optimal = candidates.find((c) => c.rank < expectedRank) ?? null;
 
   return { chosen, optimal, mistakeFired, saveTarget };
 }
@@ -267,7 +271,7 @@ export function advanceSimulation(
 
   const result = aiPickPlayerWithNoise(state.availablePool);
   if (!result) return state;
-  const optimalPlayer = bestByAdp(state.availablePool);
+  const optimalPlayer = bestByRank(state.availablePool);
   return draftEngine(state, {
     type: "PICK_PLAYER",
     player: result.player,
