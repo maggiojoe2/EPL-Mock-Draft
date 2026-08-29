@@ -14,7 +14,7 @@ Too Many Cooks,Omarion Hampton,false,false
 Too Many Cooks,Luther Burden III,false,false
 Too Many Cooks,Kyle Pitts Sr.,false,false
 Too Many Cooks,Eddy Pineiro,false,false
-Too Many Cooks,Pittsburgh Steelers DST,false,false
+Too Many Cooks,Pittsburgh Steelers,false,false
 Taco Bout a Win,Patrick Mahomes II,true,false
 Taco Bout a Win,Woody Marks,false,false
 Taco Bout a Win,Kenny Gainwell,false,false
@@ -31,7 +31,7 @@ Taco Bout a Win,Jayden Reed,false,false
 Taco Bout a Win,Najee Harris,false,false
 Taco Bout a Win,Tyler Shough,false,false
 Taco Bout a Win,Ka'imi Fairbairn,false,false
-Taco Bout a Win,Detroit Lions DST,false,false
+Taco Bout a Win,Detroit Lions,false,false
 Gnome Mercy,Dak Prescott,true,false
 Gnome Mercy,Isiah Pacheco,false,false
 Gnome Mercy,De'Von Achane,true,true
@@ -45,8 +45,8 @@ Gnome Mercy,Keenan Allen,false,false
 Gnome Mercy,Rachaad White,false,false
 Gnome Mercy,Romeo Doubs,false,false
 Gnome Mercy,Bhayshul Tuten,false,false
-Gnome Mercy,New England Patriots DST,false,false
-Gnome Mercy,Indianapolis Colts DST,false,false
+Gnome Mercy,New England Patriots,false,false
+Gnome Mercy,Indianapolis Colts,false,false
 Gnome Mercy,Jason Myers,false,false
 The Sea Lions,Jared Goff,false,false
 The Sea Lions,Bucky Irving,true,true
@@ -62,7 +62,7 @@ The Sea Lions,Matthew Stafford,false,false
 The Sea Lions,Kayshon Boutte,false,false
 The Sea Lions,Tez Johnson,false,false
 The Sea Lions,Darren Waller,false,false
-The Sea Lions,Los Angeles Chargers DST,false,false
+The Sea Lions,Los Angeles Chargers,false,false
 The Sea Lions,Will Reichard,false,false
 Lamarvelous,Lamar Jackson,true,false
 Lamarvelous,Jaylen Warren,true,false
@@ -78,7 +78,7 @@ Lamarvelous,C.J. Stroud,false,false
 Lamarvelous,Josh Downs,false,false
 Lamarvelous,Devin Singletary,false,false
 Lamarvelous,Aaron Jones Sr.,false,false
-Lamarvelous,Denver Broncos DST,false,false
+Lamarvelous,Denver Broncos,false,false
 Lamarvelous,Chris Boswell,true,false
 Oracle of Lyra V8s,Josh Allen,true,true
 Oracle of Lyra V8s,Josh Jacobs,true,false
@@ -94,7 +94,7 @@ Oracle of Lyra V8s,Jerry Jeudy,true,false
 Oracle of Lyra V8s,Tre Tucker,false,false
 Oracle of Lyra V8s,Jordan Mason,false,false
 Oracle of Lyra V8s,Devin Neal,false,false
-Oracle of Lyra V8s,Green Bay Packers DST,false,false
+Oracle of Lyra V8s,Green Bay Packers,false,false
 Oracle of Lyra V8s,Brandon Aubrey,false,false
 Captain Giaco,Justin Herbert,false,false
 Captain Giaco,Chase Brown,false,false
@@ -110,7 +110,7 @@ Captain Giaco,Emanuel Wilson,false,false
 Captain Giaco,Jacoby Brissett,false,false
 Captain Giaco,Blake Corum,false,false
 Captain Giaco,Tre' Harris,false,false
-Captain Giaco,Tampa Bay Buccaneers DST,false,false
+Captain Giaco,Tampa Bay Buccaneers,false,false
 Captain Giaco,Jake Elliott,false,false
 Pushin Tush,Jalen Hurts,true,false
 Pushin Tush,Javonte Williams,false,false
@@ -119,7 +119,7 @@ Pushin Tush,Stefon Diggs,false,false
 Pushin Tush,Ja'Marr Chase,true,true
 Pushin Tush,Dalton Kincaid,false,false
 Pushin Tush,Breece Hall,false,false
-Pushin Tush,Philadelphia Eagles DST,true,false
+Pushin Tush,Philadelphia Eagles,true,false
 Pushin Tush,Tyler Loop,false,false
 Pushin Tush,Brock Bowers,false,false
 Pushin Tush,Davante Adams,false,false
@@ -143,7 +143,7 @@ The Ironmen,Sterling Shepard,false,false
 The Ironmen,Isaiah Likely,false,false
 The Ironmen,Jake Bates,false,false
 The Ironmen,Chase McLaughlin,true,false
-The Ironmen,Buffalo Bills DST,false,false
+The Ironmen,Buffalo Bills,false,false
 Roach Master General,Bo Nix,false,false
 Roach Master General,TreVeyon Henderson,false,false
 Roach Master General,Kyren Williams,true,true
@@ -158,7 +158,7 @@ Roach Master General,Rashee Rice,true,false
 Roach Master General,J.K. Dobbins,false,false
 Roach Master General,Jaxson Dart,false,false
 Roach Master General,Tyreek Hill,false,false
-Roach Master General,Houston Texans DST,false,false
+Roach Master General,Houston Texans,false,false
 Roach Master General,Evan McPherson,false,false
 Taylormade,Sam Darnold,false,false
 Taylormade,Jonathan Taylor,false,false
@@ -174,7 +174,7 @@ Taylormade,Ricky Pearsall,false,false
 Taylormade,Daniel Jones,false,false
 Taylormade,Christian Watson,false,false
 Taylormade,Tony Pollard,false,false
-Taylormade,Tennessee Titans DST,false,false
+Taylormade,Tennessee Titans,false,false
 Taylormade,Andy Borregales,false,false
 Sasquatch 9ers,Brock Purdy,false,false
 Sasquatch 9ers,James Cook III,false,false
@@ -190,4 +190,4 @@ Sasquatch 9ers,Chris Godwin Jr.,true,false
 Sasquatch 9ers,D'Andre Swift,false,false
 Sasquatch 9ers,T.J. Hockenson,false,false
 Sasquatch 9ers,Kareem Hunt,true,false
-Sasquatch 9ers,Seattle Seahawks DST,true,false
+Sasquatch 9ers,Seattle Seahawks,true,false
