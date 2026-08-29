@@ -20,7 +20,7 @@
     "update-players": "tsx scripts/update-players.ts"
   },
   "dependencies": {
-    "papaparse": "^5.6.0",
+    "papaparse": "^5.7.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
